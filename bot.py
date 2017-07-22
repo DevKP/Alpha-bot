@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
-import telebot
-import cherrypy
 import logging
 import re
-import requests
 import shutil
-import pymorphy2
-
-from random import randint
 from pathlib import Path
+from random import randint
 from time import sleep
+
+import cherrypy
+import pymorphy2
+import requests
+import telebot
 
 import config
 import nextstream
@@ -20,11 +20,11 @@ bot = telebot.TeleBot(config.token)
 morph = pymorphy2.MorphAnalyzer()
 
 cherrypy.config.update({'log.screen': False,
-                       'log.access_file': '',
-                       'log.error_file': ''})
+                        'log.access_file': '',
+                        'log.error_file': ''})
 
-#loggerr = telebot.logger
-#telebot.logger.setLevel(logging.DEBUG)
+# loggerr = telebot.logger
+# telebot.logger.setLevel(logging.DEBUG)
 
 logger = logging.getLogger('alphabot')
 logger.setLevel(logging.INFO)
@@ -42,6 +42,7 @@ fh.setFormatter(formatter)
 logger.addHandler(sh)
 logger.addHandler(fh)
 
+
 class WebhookServer(object):
     @cherrypy.expose
     def index(self):
@@ -50,16 +51,18 @@ class WebhookServer(object):
                         cherrypy.request.headers['content-type'] == 'application/json':
             length = int(cherrypy.request.headers['content-length'])
             json_string = cherrypy.request.body.read(length).decode("utf-8")
-            #print(json_string)
+            # print(json_string)
             update = telebot.types.Update.de_json(json_string)
             bot.process_new_updates([update])
             return ''
         else:
             raise cherrypy.HTTPError(403)
 
+
 reply_toOwner = {'ownerid': None, 'reply': False}
 
-#Еще один костыль
+
+# Еще один костыль
 def listener(messages):
     for msg in messages:
         if reply_toOwner['reply'] is True and reply_toOwner['ownerid'] is not None:
@@ -72,26 +75,30 @@ def listener(messages):
         try:
             if msg.new_chat_member is not None:
                 if msg.new_chat_member.id == config.bot_id:
-                    bot.send_message(msg.chat.id, ru_strings.bothi_message["strings"][0])
-                    bot.send_sticker(msg.chat.id, ru_strings.bothi_message['stickers'][0])
+                    bot.send_message(msg.chat.id, ru_strings.BOT_HI_MESSAGE["strings"][0])
+                    bot.send_sticker(msg.chat.id, ru_strings.BOT_HI_MESSAGE['stickers'][0])
                 else:
                     logger.info("New chat member, username: @{:s}".format(msg.from_user.username))
                     r_number = randint(0, 5)
-                    bot.send_message(msg.chat.id, ru_strings.hello_message['strings'][r_number])
+                    bot.send_message(msg.chat.id, ru_strings.HELLO_MESSAGE['strings'][r_number])
         except:
             print("Some error O_o")
 
+
 bot.set_update_listener(listener)
+
 
 @bot.message_handler(content_types=['sticker'])
 def sticker_message(msg):
     logger.info("{:s}: [STICKER] {:s}".format(msg.from_user.first_name, msg.sticker.file_id))
 
+
 @bot.message_handler(content_types=['left_chat_member'])
 def left_chat_message(msg):
     logger.info("Left chat member, username: @{:s}".format(msg.from_user.username))
-    bot.send_message(msg.chat.id, ru_strings.goodbye_message['strings'][0], parse_mode='Markdown')
-    bot.send_sticker(msg.chat.id, ru_strings.goodbye_message['stickers'][0])
+    bot.send_message(msg.chat.id, ru_strings.GOODBYE_MESSAGE['strings'][0], parse_mode='Markdown')
+    bot.send_sticker(msg.chat.id, ru_strings.GOODBYE_MESSAGE['stickers'][0])
+
 
 def get_tags(word):
     required_grammemes = set()
@@ -102,6 +109,7 @@ def get_tags(word):
     if word.tag.number:
         required_grammemes.add(word.tag.number)
     return required_grammemes
+
 
 def get_answer(*names):
     words = [morph.parse(name)[0] for name in names]
@@ -131,26 +139,26 @@ def get_answer(*names):
     return answer, coherence
 
 
-def replygetconcept_msg(photoID):
-    filepatch = './photos/{:s}.jpg'.format(photoID)
-    _file = Path(filepatch)
+def reply_get_concept_msg(photo_id):
+    file_patch = './photos/{:s}.jpg'.format(photo_id)
+    _file = Path(file_patch)
     if _file.is_file() is not True:
-        fileinfo = bot.get_file(photoID)
-        file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(config.token, fileinfo.file_path), stream=True)
-        filepatch = './photos/{:s}.jpg'.format(fileinfo.file_id)
+        file_info = bot.get_file(photo_id)
+        file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(config.token, file_info.file_path),
+                            stream=True)
+        file_patch = './photos/{:s}.jpg'.format(file_info.file_id)
         if file.status_code == 200:
-            with open(filepatch, 'wb') as f:
+            with open(file_patch, 'wb') as f:
                 file.raw.decode_content = True
                 shutil.copyfileobj(file.raw, f)
                 f.close()
 
-
-    concepts = picturedetect.analizephoto(filepatch)
+    concepts = picturedetect.analise_photo(file_patch)
     name1 = concepts[0]['name']
     name2 = concepts[1]['name']
     name3 = concepts[2]['name']
 
-    #Костыль костылевский
+    # Костыль костылевский
     if name1 == 'нет человек':
         name1 = 'безлюдное'
     if name2 == 'нет человек':
@@ -175,147 +183,168 @@ def replygetconcept_msg(photoID):
 
     answers.sort(key=sort_answers)
 
-   # answer += "\n*Думаю, это {}, {}, {}!*".format(name1, name2, name3)
+    # answer += "\n*Думаю, это {}, {}, {}!*".format(name1, name2, name3)
 
-    logger.info("[WHATISTHIS] Photo ID {0} - [{1}|{2}|{3}]".format(photoID, name1, name2, name3))
+    logger.info("[WHATISTHIS] Photo ID {0} - [{1}|{2}|{3}]".format(photo_id, name1, name2, name3))
     return "*{}!*".format(answers[0][0])
+
 
 @bot.message_handler(commands=['start'])
 def start_message(message):
-    logger.info("/start command by {:s}, Username {:d}".format(message.from_user.first_name, message.from_user.username))
-    if(message.chat.id > 0 ):
-        bot.send_message(message.chat.id, ru_strings.start_message['strings'][0].format(message.chat.first_name))
+    logger.info(
+        "/start command by {:s}, Username {:d}".format(message.from_user.first_name, message.from_user.username))
+    if message.chat.id > 0:
+        bot.send_message(message.chat.id, ru_strings.START_MESSAGE['strings'][0].format(message.chat.first_name))
+
 
 @bot.message_handler(commands=['nextstream'])
-def _nextstream(message):
-    logger.info("/nextstream command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
-    bot.send_message(message.chat.id, nextstream.getnextstreammsg(), parse_mode='Markdown')
+def _next_stream(message):
+    logger.info(
+        "/nextstream command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
+    bot.send_message(message.chat.id, nextstream.get_next_stream_msg(nextstream.STREAM), parse_mode='Markdown')
+
 
 @bot.message_handler(commands=['gotospace'])
-def _gotospace(message):
-    logger.info("/gotospace command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
-    bot.send_message(message.chat.id, ru_strings.offtop_command_message, parse_mode='Markdown')
-    
+def _goto_space(message):
+    logger.info(
+        "/gotospace command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
+    bot.send_message(message.chat.id, ru_strings.OFFTOP_COMMAND_MESSAGE, parse_mode='Markdown')
+
+
 @bot.message_handler(commands=['info'])
 def start_message(message):
     print(message)
-    logger.info("/info command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
-    bot.send_message(message.chat.id, ru_strings.info_command_message, parse_mode='Markdown')
+    logger.info(
+        "/info command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
+    bot.send_message(message.chat.id, ru_strings.INFO_COMMAND_MESSAGE, parse_mode='Markdown')
+
 
 @bot.message_handler(commands=['msg'])
 def start_message(message):
-    logger.info("/msg command by {:s}, Username @{:s}".format(message.from_user.first_name,message.from_user.username))
+    logger.info("/msg command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
     if message.from_user.id == config.ownerid:
         logger.info("Owner detected!")
-        bot.send_message(message.chat.id, ru_strings.sendmsg_message['strings'][0], parse_mode='Markdown')
+        bot.send_message(message.chat.id, ru_strings.SEND_MSG_MESSAGE['strings'][0], parse_mode='Markdown')
         reply_toOwner['ownerid'] = message.from_user.id
         reply_toOwner['reply'] = True
         bot.register_next_step_handler(message, send_message)
 
+
 def send_message(message):
     if message.text.find('/cancel') != -1:
-        bot.send_message(message.chat.id, ru_strings.cancel_message['strings'][0], parse_mode='Markdown')
+        bot.send_message(message.chat.id, ru_strings.CANCEL_MESSAGE['strings'][0], parse_mode='Markdown')
         reply_toOwner['reply'] = False
     else:
         bot.send_message(config.send_chat_id, message.text, parse_mode='Markdown')
         logger.info("Sending message {:s} to chat {:d}".format(message.text, config.send_chat_id))
         bot.register_next_step_handler(message, send_message)
 
+
 @bot.message_handler(commands=['stk'])
 def stk_command(message):
     logger.info("/stk command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
     if message.from_user.id == config.ownerid or message.from_user.id == 42577446:
         logger.info("Owner detected!")
-        bot.send_message(message.chat.id, ru_strings.sendsticker_message['stickers'][0], parse_mode='Markdown')
+        bot.send_message(message.chat.id, ru_strings.SENDSTICKER_MESSAGE['stickers'][0], parse_mode='Markdown')
         bot.register_next_step_handler(message, send_sticker)
+
 
 def send_sticker(message):
     if message.content_type is not 'sticker':
         if message.text is not None:
             if message.text.find('/cancel') != -1:
-                bot.send_message(message.chat.id, ru_strings.cancel_message['strings'][0], parse_mode='Markdown')
+                bot.send_message(message.chat.id, ru_strings.CANCEL_MESSAGE['strings'][0], parse_mode='Markdown')
             else:
-                bot.send_message(message.chat.id, ru_strings.sendsticker_message['stickers'][1], parse_mode='Markdown')
+                bot.send_message(message.chat.id, ru_strings.SENDSTICKER_MESSAGE['stickers'][1], parse_mode='Markdown')
                 bot.register_next_step_handler(message, send_sticker)
     else:
         bot.send_sticker(config.send_chat_id, message.sticker.file_id)
         logger.info("Sending sticker {:s} to chat {:d}".format(message.sticker.file_id, config.send_chat_id))
 
+
 @bot.message_handler(content_types=["photo"])
-def photorecieve(message):
-    fileinfo = bot.get_file(message.photo[len(message.photo) - 1].file_id)
-    file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(config.token, fileinfo.file_path), stream=True)
-    filepatch = './photos/{:s}.jpg'.format(fileinfo.file_id)
+def photo_receive(message):
+    file_info = bot.get_file(message.photo[len(message.photo) - 1].file_id)
+    file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(config.token, file_info.file_path),
+                        stream=True)
+    file_patch = './photos/{:s}.jpg'.format(file_info.file_id)
     if file.status_code == 200:
-        with open(filepatch, 'wb') as f:
+        with open(file_patch, 'wb') as f:
             file.raw.decode_content = True
             shutil.copyfileobj(file.raw, f)
             f.close()
-        logger.info("Photo by Username @{:s} | ID {:s}".format(message.from_user.username, fileinfo.file_id))
-        logger.info("Start analizing | ID {:s}".format(fileinfo.file_id))
-        concepts = picturedetect.analizephoto(filepatch)
-        if picturedetect.checkblacklist(concepts, picturedetect.blacklist, logger) is True:
-            bot.reply_to(message, ru_strings.spacedetect_message['strings'][0], parse_mode='Markdown')
-            bot.send_sticker(message.chat.id, ru_strings.spacedetect_message['stickers'][0])
+        logger.info("Photo by Username @{:s} | ID {:s}".format(message.from_user.username, file_info.file_id))
+        logger.info("Start analysing | ID {:s}".format(file_info.file_id))
+        concepts = picturedetect.analise_photo(file_patch)
+        if picturedetect.check_blacklist(concepts, picturedetect.BLACKLIST, logger) is True:
+            bot.reply_to(message, ru_strings.SPACE_DETECT_MESSAGE['strings'][0], parse_mode='Markdown')
+            bot.send_sticker(message.chat.id, ru_strings.SPACE_DETECT_MESSAGE['stickers'][0])
             bot.send_chat_action(message.chat.id, 'typing')
             sleep(8)
-            _gotospace(message)
-            logger.info("SPACE FINDED! | ID {:s}".format(fileinfo.file_id))
+            _goto_space(message)
+            logger.info("SPACE FOUND! | ID {:s}".format(file_info.file_id))
         else:
-            logger.info("SPACE NOT FINDED! | ID {:s}".format(fileinfo.file_id))
+            logger.info("SPACE NOT FOUND! | ID {:s}".format(file_info.file_id))
         if message.forward_from is None and message.caption is not None:
             if re.match('(?i)(\W|^)(!п[еэ]рс(ичек|ик).*?)(\W|$)', message.caption):
-                bot.reply_to(message, replygetconcept_msg(fileinfo.file_id), parse_mode='Markdown')
+                bot.reply_to(message, reply_get_concept_msg(file_info.file_id), parse_mode='Markdown')
+
 
 @bot.message_handler(regexp='(?i)(\W|^)(!п[еэ]рс(ичек|ик).*?)(\W|$)')
 def persik_keyword(message):
     if message.reply_to_message is not None:
         if message.reply_to_message.photo is not None:
-            fileinfo = bot.get_file(message.reply_to_message.photo[len(message.reply_to_message.photo) - 1].file_id)
-            msg = replygetconcept_msg(fileinfo.file_id)
+            file_info = bot.get_file(message.reply_to_message.photo[len(message.reply_to_message.photo) - 1].file_id)
+            msg = reply_get_concept_msg(file_info.file_id)
             bot.reply_to(message, msg, parse_mode='Markdown')
             return
     if len(message.text) < 9:
-        comehere_message(message)
+        come_here_message(message)
         return
     if re.match('(?i)(\W|^).*?(.*?пить.*?или.*?не).*?(\W|$)', message.text):
         drink_question(message)
         return
     if re.match('(?i)(\W|^).*?((иди сюда)|(ты где)|(ты тут)|(привет)|(кыс)).*?(\W|$)', message.text):
-        comehere_message(message)
+        come_here_message(message)
         return
-    if re.match('(?i)(\W|^).*?((когда.*?стрим|трансляция|(зап|п)уск)|((стрим|трансляция|(зап|п)уск).*?когда)).*?(\W|$)', message.text):
-        answerstream(message)
+    if re.match('(?i)(\W|^).*?((когда.*?стрим|трансляция|(зап|п)уск)|((стрим|трансляция|(зап|п)уск).*?когда)).*?(\W|$)',
+                message.text):
+        answer_stream(message)
         return
     if re.match('(?i)(\W|^).*?((зануда*?)|(космос*?)|(выгони*?)).*?(\W|$)', message.text):
-        answergotospace(message)
+        answer_goto_space(message)
         return
     if re.match('(?i)(\W|^).*?((мозг)|(живой)|(красав)|(молодец)|(хорош)).*?(\W|$)', message.text):
         goodboy(message)
         return
-    bot.reply_to(message, ru_strings.na_message['strings'][0], parse_mode='Markdown')
+    bot.reply_to(message, ru_strings.NA_MESSAGE['strings'][0], parse_mode='Markdown')
+
 
 def drink_question(message):
     logger.info("[Come here] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
     r_number = randint(0, 3)
-    bot.reply_to(message, ru_strings.drinkquestion_message['strings'][r_number], parse_mode='Markdown')
+    bot.reply_to(message, ru_strings.DRINK_QUESTION_MESSAGE['strings'][r_number], parse_mode='Markdown')
 
-def comehere_message(message):
+
+def come_here_message(message):
     logger.info("[Come here] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
     r_number = randint(0, 6)
-    bot.reply_to(message, ru_strings.imhere_message['strings'][r_number], parse_mode='Markdown')
+    bot.reply_to(message, ru_strings.IM_HERE_MESSAGE['strings'][r_number], parse_mode='Markdown')
 
-def answerstream(message):
+
+def answer_stream(message):
     logger.info("[Next stream] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
-    _nextstream(message)
+    _next_stream(message)
 
-def answergotospace(message):
+
+def answer_goto_space(message):
     logger.info("[Gotospace] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
-    _gotospace(message)
+    _goto_space(message)
+
 
 @bot.message_handler(regexp='(?i)(\W|^)((мозг*?)|(живой*?)|(красав*?)|(молодец*?)|(хороший*?))(\W|$)')
 def goodboy_message(message):
@@ -323,14 +352,17 @@ def goodboy_message(message):
         if message.reply_to_message.from_user.id == config.bot_id:
             goodboy(message)
 
+
 def goodboy(message):
     logger.info("[Good boy] command by {:s}, Username @{:s} | '{:s}')"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
-    bot.send_sticker(message.chat.id, ru_strings.goodboy_message['stickers'][0])
+    bot.send_sticker(message.chat.id, ru_strings.GOODBOY_MESSAGE['stickers'][0])
+
 
 @bot.message_handler(regexp='(?i)(\W|^)(Привет Т[её]ма)(\W|$)')
 def secret_message(message):
     bot.send_message(message.chat.id, 'Ы', parse_mode='Markdown')
+
 
 if __name__ == "__main__":
     bot.remove_webhook()
@@ -346,9 +378,3 @@ if __name__ == "__main__":
     })
     logger.info("Alpha-Bot started!")
     cherrypy.quickstart(WebhookServer(), config.WEBHOOK_URL_PATH, {'/': {}})
-
-
-
-
-
-
