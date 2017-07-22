@@ -1,63 +1,62 @@
 # -*- coding: utf-8 -*-
 
-start_message = {'strings': ['Привет, {:s}! Рад тебя видеть!'],
+START_MESSAGE = {'strings': ['Привет, {:s}! Рад тебя видеть!'],
                  'stickers': None}
 
-hello_message = {'strings': [
-                 "Добро пожаловать!",
-                 "Привет тебе!",
-                 "Рад вас видеть!",
-                 "Привет новенький!",
-                 "Добро пожаловать в оффтоп!",
-                 "Приветик!"],
-                 'stickers': None}
+HELLO_MESSAGE = {'strings': [
+    "Добро пожаловать!",
+    "Привет тебе!",
+    "Рад вас видеть!",
+    "Привет новенький!",
+    "Добро пожаловать в оффтоп!",
+    "Приветик!"],
+    'stickers': None}
 
-goodbye_message = {'strings': ["*Мне будет тебя нехватать..*"],
+GOODBYE_MESSAGE = {'strings': ["*Мне будет тебя нехватать..*"],
                    'stickers': ["CAADAgADHwMAApFfCAABY7_lnPiNJHEC"]}
 
-bothi_message = {'strings': ["Всем привет!"],
-                 'stickers': ['CAADAgADZQMAApFfCAABq6OimQg-V5EC']}
+BOT_HI_MESSAGE = {'strings': ["Всем привет!"],
+                  'stickers': ['CAADAgADZQMAApFfCAABq6OimQg-V5EC']}
 
-imhere_message = {'strings': [
-                  '*Я тут!*',
-                  '*Чем могу служить?*',
-                  '*Что хотели? :D*',
-                  '*Говори, только быстро!*',
-                  'Мяу!',
-                  '*Привет!*'],
-                  'stickers': None}
+IM_HERE_MESSAGE = {'strings': [
+    '*Я тут!*',
+    '*Чем могу служить?*',
+    '*Что хотели? :D*',
+    '*Говори, только быстро!*',
+    'Мяу!',
+    '*Привет!*'],
+    'stickers': None}
 
-spacedetect_message = {'strings': ['*Какой космос!? Накажу!*'],
-                       'stickers': ['CAADAgADEQMAApFfCAABY-zGe3B9vwgC']}
+SPACE_DETECT_MESSAGE = {'strings': ['*Какой космос!? Накажу!*'],
+                        'stickers': ['CAADAgADEQMAApFfCAABY-zGe3B9vwgC']}
 
-drinkquestion_message = {'strings': [
-                        '*Пить!*',
-                        '*Однозначно, пить!*',
-                        '*Не пить!*',
-                        '*Не пей, подумой!*'],
-                        'stickers': None}
+DRINK_QUESTION_MESSAGE = {'strings': [
+    '*Пить!*',
+    '*Однозначно, пить!*',
+    '*Не пить!*',
+    '*Не пей, подумой!*'],
+    'stickers': None}
 
-goodboy_message = {'strings': None,
+GOODBOY_MESSAGE = {'strings': None,
                    'stickers': ['CAADAgADQQMAApFfCAABzoVI0eydHSgC']}
 
-sendsticker_message = {'strings': ['Пришли стикер, я отправлю :3! /cancel если передумал.',
+SENDSTICKER_MESSAGE = {'strings': ['Пришли стикер, я отправлю :3! /cancel если передумал.',
                                    '*Это не стикер!*'],
                        'stickers': None}
 
-sendmsg_message = {'strings': ['Все твои сообщения я буду пересылать! /cancel если передумал.'],
+SEND_MSG_MESSAGE = {'strings': ['Все твои сообщения я буду пересылать! /cancel если передумал.'],
+                    'stickers': None}
+
+CANCEL_MESSAGE = {'strings': ['*Окей, не хочешь - как хочешь!*'],
                   'stickers': None}
 
-cancel_message = {'strings': ['*Окей, не хочешь - как хочешь!*'],
-                  'stickers': None}
+NA_MESSAGE = {'strings': ['*Не понял вопрос.. D:*'],
+              'stickers': None}
 
-na_message = {'strings': ['*Не понял вопрос.. D:*'],
-                  'stickers': None}
-
-
-offtop_command_message = '''*Ой, кажется кто-то здесь начал говорить про космос.*
+OFFTOP_COMMAND_MESSAGE = '''*Ой, кажется кто-то здесь начал говорить про космос.*
 Друзья, для зануд у нас есть [специальный чат](https://t.me/thealphacentauri). Велкам!'''
 
-info_command_message = '''В чате стараемся не оскорблять участников.
+INFO_COMMAND_MESSAGE = '''В чате стараемся не оскорблять участников.
 Спам смайлами и стикерами наказуемы.
 Политота и демагогия *могут* пресекаться.
 
