@@ -60,19 +60,10 @@ class WebhookServer(object):
         else:
             raise cherrypy.HTTPError(403)
 
-
-reply_toOwner = {'ownerid': None, 'reply': False}
-
-
 # Еще один костыль
 def listener(messages):
     try:
         for msg in messages:
-            if reply_toOwner['reply'] is True and reply_toOwner['ownerid'] is not None:
-                print(msg)
-                if msg.chat.id == config.send_chat_id:
-                    bot.forward_message(reply_toOwner['ownerid'], config.send_chat_id, msg.message_id)
-
             if msg.text is not None:
                 logger.info("{:s}: {:s}".format(msg.from_user.first_name, msg.text))
 
@@ -90,9 +81,7 @@ def listener(messages):
         bot.send_sticker(msg.chat.id, ru_strings.SOMEERROR_MESSAGE['stickers'][0])
         raise
 
-
 bot.set_update_listener(listener)
-
 
 @bot.message_handler(content_types=['sticker'])
 def sticker_message(msg):
@@ -247,31 +236,32 @@ def start_message(message):
 @bot.message_handler(commands=['msg'])
 def start_message(message):
     logger.info("/msg command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
-    if message.from_user.id == config.ownerid:
-        logger.info("Owner detected!")
+    if message.from_user.id == config.owner_id or message.from_user.id == config.exodeon_id:
+        logger.info("The owner detected!")
         bot.send_message(message.chat.id, ru_strings.SEND_MSG_MESSAGE['strings'][0], parse_mode='Markdown')
-        reply_toOwner['ownerid'] = message.from_user.id
-        reply_toOwner['reply'] = True
         bot.register_next_step_handler(message, send_message)
+    else:
+        logger.info("This isn't the owner!")
 
 
 def send_message(message):
     if message.text.find('/cancel') != -1:
         bot.send_message(message.chat.id, ru_strings.CANCEL_MESSAGE['strings'][0], parse_mode='Markdown')
-        reply_toOwner['reply'] = False
     else:
         bot.send_message(config.send_chat_id, message.text, parse_mode='Markdown')
         logger.info("Sending message {:s} to chat {:d}".format(message.text, config.send_chat_id))
-        bot.register_next_step_handler(message, send_message)
+        bot.send_message(message.chat.id, ru_strings.SEND_MSG_MESSAGE['strings'][1], parse_mode='Markdown')
 
 
 @bot.message_handler(commands=['stk'])
 def stk_command(message):
     logger.info("/stk command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
-    if message.from_user.id == config.ownerid or message.from_user.id == 42577446:
-        logger.info("Owner detected!")
+    if message.from_user.id == config.owner_id or message.from_user.id == config.exodeon_id:
+        logger.info("The owner detected!")
         bot.send_message(message.chat.id, ru_strings.SENDSTICKER_MESSAGE['stickers'][0], parse_mode='Markdown')
         bot.register_next_step_handler(message, send_sticker)
+    else:
+        logger.info("This isn't the owner!")
 
 
 def send_sticker(message):
@@ -290,6 +280,10 @@ def send_sticker(message):
 @bot.message_handler(content_types=["photo"])
 def photo_receive(message):
     file_id = message.photo[len(message.photo) - 1].file_id
+
+    if message.forward_from is None and message.caption is not None:
+        if re.match('(?i)(\W|^).*?(!п[еэ]рс(ичек|ик).*?)(\W|$)', message.caption):
+            bot.reply_to(message, reply_get_concept_msg(file_id), parse_mode='Markdown')
 
     logger.info("Photo by Username @{:s} | ID {:s}".format(message.from_user.username, file_id))
 
@@ -312,16 +306,15 @@ def photo_receive(message):
     if picturedetect.check_blacklist(concepts, picturedetect.BLACKLIST, logger) is True:
         bot.reply_to(message, ru_strings.SPACE_DETECT_MESSAGE['strings'][0], parse_mode='Markdown')
         bot.send_sticker(message.chat.id, ru_strings.SPACE_DETECT_MESSAGE['stickers'][0])
+
         bot.send_chat_action(message.chat.id, 'typing')
+
         sleep(8)
+
         _goto_space(message)
         logger.info("SPACE FOUND! | ID {:s}".format(file_id))
     else:
         logger.info("SPACE NOT FOUND! | ID {:s}".format(file_id))
-
-    if message.forward_from is None and message.caption is not None:
-        if re.match('(?i)(\W|^).*?(!п[еэ]рс(ичек|ик).*?)(\W|$)', message.caption):
-            bot.reply_to(message, reply_get_concept_msg(file_id), parse_mode='Markdown')
 
 @bot.message_handler(regexp='(?i)(\W|^)(!п[еэ]рс(ичек|ик).*?)(\W|$)')
 def persik_keyword(message):
@@ -340,6 +333,7 @@ def persik_keyword(message):
 
             bot.reply_to(message, msg, parse_mode='Markdown')
             return
+
     if len(message.text) < 9:
         come_here_message(message)
         return

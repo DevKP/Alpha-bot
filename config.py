@@ -14,4 +14,5 @@ WEBHOOK_URL_PATH = "/{:s}/".format(token)
 
 send_chat_id = -1001149008244
 bot_id = 407478787
-ownerid = 204678400
+owner_id = 204678400
+exodeon_id = 42577446

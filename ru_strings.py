@@ -44,7 +44,8 @@ SENDSTICKER_MESSAGE = {'strings': ['Пришли стикер, я отправл
                                    '*Это не стикер!*'],
                        'stickers': None}
 
-SEND_MSG_MESSAGE = {'strings': ['Все твои сообщения я буду пересылать! /cancel если передумал.'],
+SEND_MSG_MESSAGE = {'strings': ['Пришли сообщение! /cancel если передумал.',
+                                '*Выполнено!*'],
                     'stickers': None}
 
 CANCEL_MESSAGE = {'strings': ['*Окей, не хочешь - как хочешь!*'],
