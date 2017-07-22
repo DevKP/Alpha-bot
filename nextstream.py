@@ -21,7 +21,7 @@ def get_next_stream_msg(stream):
     else:
         days, remainder = divmod(delta.total_seconds(), 86400)
         hours, remainder = divmod(remainder, 3600)
-        minutes, seconds = divmod(remainder, 60)
+        minutes = round(remainder/60)
         time = 'Следующий пуск состоится *через %dд. %dч. %dмин.*' % (days, hours, minutes)
 
     info_text = '{0} ({1} по Киеву/МСК).\n' \
