@@ -320,11 +320,14 @@ def photo_receive(message):
         logger.info("SPACE NOT FOUND! | ID {:s}".format(file_id))
 
     if message.forward_from is None and message.caption is not None:
-        if re.match('(?i)(\W|^)(!п[еэ]рс(ичек|ик).*?)(\W|$)', message.caption):
+        if re.match('(?i)(\W|^).*?(!п[еэ]рс(ичек|ик).*?)(\W|$)', message.caption):
             bot.reply_to(message, reply_get_concept_msg(file_id), parse_mode='Markdown')
 
 @bot.message_handler(regexp='(?i)(\W|^)(!п[еэ]рс(ичек|ик).*?)(\W|$)')
 def persik_keyword(message):
+    logger.info("!Persik command by {:s}, Username @{:s}".
+                format(message.from_user.first_name, message.from_user.username))
+
     if message.reply_to_message is not None:
         if message.reply_to_message.photo is not None:
             file_info = bot.get_file(message.reply_to_message.photo[len(message.reply_to_message.photo) - 1].file_id)
@@ -356,8 +359,11 @@ def persik_keyword(message):
     if re.match('(?i)(\W|^).*?((мозг)|(живой)|(красав)|(молодец)|(хорош)).*?(\W|$)', message.text):
         goodboy(message)
         return
+
     bot.reply_to(message, ru_strings.NA_MESSAGE['strings'][0], parse_mode='Markdown')
 
+    logger.info("UNKNOWN command by {:s}, Username @{:s}"
+                .format(message.from_user.first_name, message.from_user.username))
 
 def drink_question(message):
     logger.info("[Come here] command by {:s}, Username @{:s} | '{:s}'"
