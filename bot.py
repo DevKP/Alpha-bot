@@ -81,7 +81,7 @@ def listener(messages):
         except:
             print("Some error O_o")
 
-
+bot.set_update_listener(listener)
 
 @bot.message_handler(content_types=['sticker'])
 def sticker_message(msg):
@@ -332,10 +332,10 @@ def goodboy(message):
 def secret_message(message):
     bot.send_message(message.chat.id, 'Ы', parse_mode='Markdown')
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     bot.remove_webhook()
     bot.set_webhook(url=config.WEBHOOK_URL_BASE + config.WEBHOOK_URL_PATH,
-                certificate=open(config.WEBHOOK_SSL_CERT, 'r'))
+                    certificate=open(config.WEBHOOK_SSL_CERT, 'r'))
 
     cherrypy.config.update({
         'server.socket_host': config.WEBHOOK_LISTEN,
@@ -344,11 +344,8 @@ if __name__ == '__main__':
         'server.ssl_certificate': config.WEBHOOK_SSL_CERT,
         'server.ssl_private_key': config.WEBHOOK_SSL_PRIV
     })
-    cherrypy.quickstart(WebhookServer(), config.WEBHOOK_URL_PATH, {'/': {}})
-
-    bot.set_update_listener(listener)
-
     logger.info("Alpha-Bot started!")
+    cherrypy.quickstart(WebhookServer(), config.WEBHOOK_URL_PATH, {'/': {}})
 
 
 
