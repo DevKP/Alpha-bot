@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 import logging
+import os
 import re
 import shutil
-import sys
-import os
 from pathlib import Path
 from random import randint
 from time import sleep
@@ -60,6 +59,7 @@ class WebhookServer(object):
         else:
             raise cherrypy.HTTPError(403)
 
+
 # Еще один костыль
 def listener(messages):
     try:
@@ -75,13 +75,13 @@ def listener(messages):
                         logger.info("New chat member, username: @{:s}".format(msg.from_user.username))
                         r_number = randint(0, 5)
                         bot.send_message(msg.chat.id, ru_strings.HELLO_MESSAGE['strings'][r_number])
-    except:
-        logger.error("Unexpected error: {}".format(sys.exc_info()[0]))
-        bot.reply_to(msg, ru_strings.SOMEERROR_MESSAGE['strings'], parse_mode='Markdown')
-        bot.send_sticker(msg.chat.id, ru_strings.SOMEERROR_MESSAGE['stickers'][0])
+    except Exception as e:
+        logger.error("Unexpected error: {}".format(e))
         raise
 
+
 bot.set_update_listener(listener)
+
 
 @bot.message_handler(content_types=['sticker'])
 def sticker_message(msg):
@@ -136,12 +136,12 @@ def get_answer(*names):
 
 def file_download(file_id, patch):
     file_info = bot.get_file(file_id)
-    filename, file_extension = os.path.splitext(file_info.file_path)
+    _, file_extension = os.path.splitext(file_info.file_path)
     filename = file_id
     attempts = 5
 
     for i in range(attempts):
-        file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(config.token, file_info.file_path),
+        file = requests.get('https://api.telegram.org/file/bot{}/{}'.format(config.token, file_info.file_path),
                             stream=True)
         if file.status_code == 200:
             file_patch = "".join([patch, filename, file_extension])
@@ -149,9 +149,8 @@ def file_download(file_id, patch):
                 with open(file_patch, 'wb') as f:
                     file.raw.decode_content = True
                     shutil.copyfileobj(file.raw, f)
-                    f.close()
-            except:
-                logger.error("Unexpected error: {}".format(sys.exc_info()[0]))
+            except Exception as e:
+                logger.error("Unexpected error: {}".format(e))
                 return None
 
             return file_patch
@@ -160,6 +159,7 @@ def file_download(file_id, patch):
             sleep(3)
 
     return None
+
 
 def reply_get_concept_msg(photo_id):
     file_patch = './photos/{:s}.jpg'.format(photo_id)
@@ -227,7 +227,6 @@ def _goto_space(message):
 
 @bot.message_handler(commands=['info'])
 def start_message(message):
-    print(message)
     logger.info(
         "/info command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
     bot.send_message(message.chat.id, ru_strings.INFO_COMMAND_MESSAGE, parse_mode='Markdown')
@@ -236,7 +235,7 @@ def start_message(message):
 @bot.message_handler(commands=['msg'])
 def start_message(message):
     logger.info("/msg command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
-    if message.from_user.id == config.owner_id or message.from_user.id == config.exodeon_id:
+    if message.from_user.id in (config.owner_id, config.exodeon_id):
         logger.info("The owner detected!")
         bot.send_message(message.chat.id, ru_strings.SEND_MSG_MESSAGE['strings'][0], parse_mode='Markdown')
         bot.register_next_step_handler(message, send_message)
@@ -256,7 +255,7 @@ def send_message(message):
 @bot.message_handler(commands=['stk'])
 def stk_command(message):
     logger.info("/stk command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
-    if message.from_user.id == config.owner_id or message.from_user.id == config.exodeon_id:
+    if message.from_user.id in (config.owner_id, config.exodeon_id):
         logger.info("The owner detected!")
         bot.send_message(message.chat.id, ru_strings.SENDSTICKER_MESSAGE['stickers'][0], parse_mode='Markdown')
         bot.register_next_step_handler(message, send_sticker)
@@ -281,7 +280,7 @@ def send_sticker(message):
 def photo_receive(message):
     file_id = message.photo[len(message.photo) - 1].file_id
 
-    if message.forward_from is None and message.caption is not None:
+    if message.forward_from and message.caption:
         if re.match('(?i)(\W|^).*?(!п[еэ]рс(ичек|ик).*?)(\W|$)', message.caption):
             bot.reply_to(message, reply_get_concept_msg(file_id), parse_mode='Markdown')
 
@@ -295,8 +294,8 @@ def photo_receive(message):
     if file_patch is None:
         logger.error("File download error!'")
 
-        bot.reply_to(message, ru_strings.SOMEERROR_MESSAGE['strings'], parse_mode='Markdown')
-        bot.send_sticker(message.chat.id, ru_strings.SOMEERROR_MESSAGE['stickers'][0])
+        bot.reply_to(message, ru_strings.SOME_ERROR_MESSAGE['strings'], parse_mode='Markdown')
+        bot.send_sticker(message.chat.id, ru_strings.SOME_ERROR_MESSAGE['stickers'][0])
 
         return
 
@@ -316,60 +315,68 @@ def photo_receive(message):
     else:
         logger.info("SPACE NOT FOUND! | ID {:s}".format(file_id))
 
+
 @bot.message_handler(regexp='(?i)(\W|^)(!п[еэ]рс(ичек|ик).*?)(\W|$)')
 def persik_keyword(message):
     logger.info("!Persik command by {:s}, Username @{:s}".
                 format(message.from_user.first_name, message.from_user.username))
 
-    if message.reply_to_message is not None:
-        if message.reply_to_message.photo is not None:
-            file_info = bot.get_file(message.reply_to_message.photo[len(message.reply_to_message.photo) - 1].file_id)
+    try:
+        if message.reply_to_message and message.reply_to_message.photo:
+            file_info = bot.get_file(
+                message.reply_to_message.photo[len(message.reply_to_message.photo) - 1].file_id)
             msg = reply_get_concept_msg(file_info.file_id)
 
             if msg is None:
-                bot.reply_to(message, ru_strings.SOMEERROR_MESSAGE['strings'], parse_mode='Markdown')
-                bot.send_sticker(message.chat.id, ru_strings.SOMEERROR_MESSAGE['stickers'][0])
+                bot.reply_to(message, ru_strings.SOME_ERROR_MESSAGE['strings'], parse_mode='Markdown')
+                bot.send_sticker(message.chat.id, ru_strings.SOME_ERROR_MESSAGE['stickers'][0])
                 return
 
             bot.reply_to(message, msg, parse_mode='Markdown')
             return
 
-    if len(message.text) < 9:
-        come_here_message(message)
-        return
-    if re.match('(?i)(\W|^).*?(.*?пить.*?или.*?не).*?(\W|$)', message.text):
-        drink_question(message)
-        return
-    if re.match('(?i)(\W|^).*?((иди сюда)|(ты где)|(ты тут)|(привет)|(кыс)).*?(\W|$)', message.text):
-        come_here_message(message)
-        return
-    if re.match('(?i)(\W|^).*?((когда.*?стрим|трансляция|(зап|п)уск)|((стрим|трансляция|(зап|п)уск).*?когда)).*?(\W|$)',
+        if len(message.text) < 9:
+            come_here_message(message)
+            return
+        if re.match('(?i)(\W|^).*?(.*?пить.*?или.*?не).*?(\W|$)', message.text):
+            drink_question(message)
+            return
+        if re.match('(?i)(\W|^).*?((иди сюда)|(ты где)|(ты тут)|(привет)|(кыс)).*?(\W|$)', message.text):
+            come_here_message(message)
+            return
+        if re.match(
+                '(?i)(\W|^).*?((когда.*?стрим|трансляция|(зап|п)уск)|((стрим|трансляция|(зап|п)уск).*?когда)).*?(\W|$)',
                 message.text):
-        answer_stream(message)
-        return
-    if re.match('(?i)(\W|^).*?((зануда*?)|(космос*?)|(выгони*?)).*?(\W|$)', message.text):
-        answer_goto_space(message)
-        return
-    if re.match('(?i)(\W|^).*?((мозг)|(живой)|(красав)|(молодец)|(хорош)).*?(\W|$)', message.text):
-        goodboy(message)
-        return
+            answer_stream(message)
+            return
+        if re.match('(?i)(\W|^).*?((зануда*?)|(космос*?)|(выгони*?)).*?(\W|$)', message.text):
+            answer_goto_space(message)
+            return
+        if re.match('(?i)(\W|^).*?((мозг)|(живой)|(красав)|(молодец)|(хорош)).*?(\W|$)', message.text):
+            goodboy(message)
+            return
 
-    bot.reply_to(message, ru_strings.NA_MESSAGE['strings'][0], parse_mode='Markdown')
+        bot.reply_to(message, ru_strings.NA_MESSAGE['strings'][0], parse_mode='Markdown')
 
-    logger.info("UNKNOWN command by {:s}, Username @{:s}"
-                .format(message.from_user.first_name, message.from_user.username))
+        logger.info("UNKNOWN command by {:s}, Username @{:s}"
+                    .format(message.from_user.first_name, message.from_user.username))
+    except Exception as e:
+        logger.error("Unexpected error: {}".format(e))
+
 
 def drink_question(message):
     logger.info("[Come here] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
-    r_number = randint(0, 3)
+    strings_num = len(ru_strings.DRINK_QUESTION_MESSAGE['strings'])
+    r_number = randint(0, strings_num - 1)
     bot.reply_to(message, ru_strings.DRINK_QUESTION_MESSAGE['strings'][r_number], parse_mode='Markdown')
 
 
 def come_here_message(message):
     logger.info("[Come here] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
-    r_number = randint(0, 6)
+    strings_num = len(ru_strings.IM_HERE_MESSAGE['strings'])
+    r_number = randint(0, strings_num + 1)
     bot.reply_to(message, ru_strings.IM_HERE_MESSAGE['strings'][r_number], parse_mode='Markdown')
 
 

@@ -54,7 +54,7 @@ CANCEL_MESSAGE = {'strings': ['*Окей, не хочешь - как хочеш�
 NA_MESSAGE = {'strings': ['*Не понял вопрос.. D:*'],
               'stickers': None}
 
-SOMEERROR_MESSAGE = {'strings': ['*Ой, ошибка какая-то!*'],
+SOME_ERROR_MESSAGE = {'strings': ['*Ой, ошибка какая-то!*'],
                     'stickers': ['CAADBAADKgADNDzmB3S04SrrT1xhAg']}
 
 OFFTOP_COMMAND_MESSAGE = '''*Ой, кажется кто-то здесь начал говорить про космос.*
