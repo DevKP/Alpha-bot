@@ -67,17 +67,16 @@ def listener(messages):
             if msg.text is not None:
                 logger.info("{:s}: {:s}".format(msg.from_user.first_name, msg.text))
 
-                if msg.new_chat_member is not None:
-                    if msg.new_chat_member.id == config.bot_id:
-                        bot.send_message(msg.chat.id, ru_strings.BOT_HI_MESSAGE["strings"][0])
-                        bot.send_sticker(msg.chat.id, ru_strings.BOT_HI_MESSAGE['stickers'][0])
-                    else:
-                        logger.info("New chat member, username: @{:s}".format(msg.from_user.username))
-                        r_number = randint(0, 5)
-                        bot.send_message(msg.chat.id, ru_strings.HELLO_MESSAGE['strings'][r_number])
+            if msg.new_chat_member is not None:
+                if msg.new_chat_member.id == config.bot_id:
+                    bot.send_message(msg.chat.id, ru_strings.BOT_HI_MESSAGE["strings"][0])
+                    bot.send_sticker(msg.chat.id, ru_strings.BOT_HI_MESSAGE['stickers'][0])
+                else:
+                    logger.info("New chat member, username: @{:s}".format(msg.from_user.username))
+                    r_number = randint(0, 5)
+                    bot.send_message(msg.chat.id, ru_strings.HELLO_MESSAGE['strings'][r_number])
     except Exception as e:
         logger.error("Unexpected error: {}".format(e))
-        raise
 
 
 bot.set_update_listener(listener)
