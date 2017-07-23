@@ -199,7 +199,7 @@ def reply_get_concept_msg(photo_id):
 
     # answer += "\n*Думаю, это {}, {}, {}!*".format(name1, name2, name3)
 
-    logger.info("[WHATISTHIS] Photo ID {0} - [{1}|{2}|{3}]".format(photo_id, name1, name2, name3))
+    logger.info("[WHATISTHIS] Photo ID {} - [{}|{}|{}]".format(photo_id, name1, name2, name3))
     return "*{}!*".format(answers[0][0])
 
 
@@ -257,7 +257,7 @@ def stk_command(message):
     logger.info("/stk command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
     if message.from_user.id in (config.owner_id, config.exodeon_id):
         logger.info("The owner detected!")
-        bot.send_message(message.chat.id, ru_strings.SENDSTICKER_MESSAGE['stickers'][0], parse_mode='Markdown')
+        bot.send_message(message.chat.id, ru_strings.SENDSTICKER_MESSAGE['strings'][0], parse_mode='Markdown')
         bot.register_next_step_handler(message, send_sticker)
     else:
         logger.info("This isn't the owner!")
