@@ -40,9 +40,9 @@ DRINK_QUESTION_MESSAGE = {'strings': [
 GOODBOY_MESSAGE = {'strings': None,
                    'stickers': ['CAADAgADQQMAApFfCAABzoVI0eydHSgC']}
 
-SENDSTICKER_MESSAGE = {'strings': ['Пришли стикер, я отправлю :3! /cancel если передумал.',
-                                   '*Это не стикер!*'],
-                       'stickers': None}
+SEND_STICKER_MESSAGE = {'strings': ['Пришли стикер, я отправлю :3! /cancel если передумал.',
+                                    '*Это не стикер!*'],
+                        'stickers': None}
 
 SEND_MSG_MESSAGE = {'strings': ['Пришли сообщение! /cancel если передумал.',
                                 '*Выполнено!*'],
@@ -55,7 +55,7 @@ NA_MESSAGE = {'strings': ['*Не понял вопрос.. D:*'],
               'stickers': None}
 
 SOME_ERROR_MESSAGE = {'strings': ['*Ой, ошибка какая-то!*'],
-                    'stickers': ['CAADBAADKgADNDzmB3S04SrrT1xhAg']}
+                      'stickers': ['CAADBAADKgADNDzmB3S04SrrT1xhAg']}
 
 OFFTOP_COMMAND_MESSAGE = '''*Ой, кажется кто-то здесь начал говорить про космос.*
 Друзья, для зануд у нас есть [специальный чат](https://t.me/thealphacentauri). Велкам!'''
