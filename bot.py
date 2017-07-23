@@ -376,7 +376,7 @@ def come_here_message(message):
     logger.info("[Come here] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
     strings_num = len(ru_strings.IM_HERE_MESSAGE['strings'])
-    r_number = randint(0, strings_num + 1)
+    r_number = randint(0, strings_num - 1)
     bot.reply_to(message, ru_strings.IM_HERE_MESSAGE['strings'][r_number], parse_mode='Markdown')
 
 
