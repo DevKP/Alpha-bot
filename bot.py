@@ -195,7 +195,7 @@ def photo_receive(message):
     file_id = message.photo[len(message.photo) - 1].file_id
 
     if message.caption and message.forward_from is None:
-        if re.match('(?i)(\W|^)!п[еэ]рс(ичек|ик).*?(\W|$)', message.caption):
+        if re.match('(?i)(\W|^).*?!п[еэ]рс(ичек|ик).*?(\W|$)', message.caption):
             bot.reply_to(message, picturedetect.reply_get_concept_msg(file_id), parse_mode='Markdown')
 
     logger.info("Photo by Username @{:s} | ID {:s}".format(message.from_user.username, file_id))
@@ -229,7 +229,7 @@ def photo_receive(message):
         logger.info("SPACE NOT FOUND! | ID {:s}".format(file_id))
 
 
-@bot.message_handler(regexp='(?i)(\W|^)!п[еэ]рс(ичек|ик).*?(\W|$)')
+@bot.message_handler(regexp='(?i)(\W|^).*?!п[еэ]рс(ичек|ик).*?(\W|$)')
 def persik_keyword(message):
     if message.forward_from:
         return
