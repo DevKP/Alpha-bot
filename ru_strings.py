@@ -27,8 +27,10 @@ IM_HERE_MESSAGE = {'strings': [
     '*Привет!*'],
     'stickers': None}
 
-SPACE_DETECT_MESSAGE = {'strings': ['*Какой космос!? Накажу!*'],
-                        'stickers': ['CAADAgADEQMAApFfCAABY-zGe3B9vwgC']}
+SPACE_DETECT_MESSAGE = {'strings': ['*Какой космос!? Накажу!*',
+                                    '*Это похоже на космос!*'],
+                        'stickers': ['CAADAgADEQMAApFfCAABY-zGe3B9vwgC',
+                                     'CAADAgADJQMAApFfCAABx8uFnPP2m80C']}
 
 DRINK_QUESTION_MESSAGE = {'strings': [
     '*Пить!*',
@@ -38,7 +40,7 @@ DRINK_QUESTION_MESSAGE = {'strings': [
     'stickers': None}
 
 GOOD_BOY_MESSAGE = {'strings': None,
-                   'stickers': ['CAADAgADQQMAApFfCAABzoVI0eydHSgC']}
+                    'stickers': ['CAADAgADQQMAApFfCAABzoVI0eydHSgC']}
 
 BAD_BOY_MESSAGE = {'strings': None,
                    'stickers': ['CAADAgADIQMAApFfCAABP2eivT2lvA4C']}
@@ -54,8 +56,12 @@ SEND_MSG_MESSAGE = {'strings': ['Пришли сообщение! /cancel есл
 CANCEL_MESSAGE = {'strings': ['*Окей, не хочешь - как хочешь!*'],
                   'stickers': None}
 
-NA_MESSAGE = {'strings': ['*Не понял вопрос.. D:*'],
-              'stickers': None}
+NA_MESSAGE = {'strings': ['*Не понял вопрос.. D:*',
+                          '*Попробуй спросить еще раз.*',
+                          '*Хватит над персиком издеватся!((*'],
+              'stickers': [None,
+                           None,
+                           'CAADBAADKgADNDzmB3S04SrrT1xhAg']}
 
 SOME_ERROR_MESSAGE = {'strings': ['*Ой, ошибка какая-то!*'],
                       'stickers': ['CAADBAADKgADNDzmB3S04SrrT1xhAg']}
