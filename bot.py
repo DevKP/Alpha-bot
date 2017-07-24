@@ -178,7 +178,7 @@ def send_sticker(message):
 def photo_receive(message):
     file_id = message.photo[len(message.photo) - 1].file_id
 
-    if message.forward_from and message.caption:
+    if message.caption:
         if re.match('(?i)(\W|^).*?(!п[еэ]рс(ичек|ик).*?)(\W|$)', message.caption):
             bot.reply_to(message, picturedetect.reply_get_concept_msg(file_id), parse_mode='Markdown')
 
