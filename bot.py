@@ -26,20 +26,6 @@ cherrypy.config.update({'log.screen': False,
 # telebot.logger.setLevel(logging.DEBUG)
 
 logger = logging.getLogger('alphabot')
-logger.setLevel(logging.INFO)
-
-sh = logging.StreamHandler()
-sh.setLevel(logging.INFO)
-
-fh = logging.FileHandler('alphabot.log', encoding='utf-8')
-fh.setLevel(logging.INFO)
-
-formatter = logging.Formatter(u'[%(asctime)s]: %(message)s')
-sh.setFormatter(formatter)
-fh.setFormatter(formatter)
-
-logger.addHandler(sh)
-logger.addHandler(fh)
 
 
 class WebhookServer(object):
@@ -75,10 +61,6 @@ def listener(messages):
                     bot.send_message(msg.chat.id, ru_strings.HELLO_MESSAGE['strings'][r_number])
     except Exception as e:
         logger.error("Unexpected error: {}".format(e))
-
-
-bot.set_update_listener(listener)
-
 
 @bot.message_handler(content_types=['sticker'])
 def sticker_message(msg):
@@ -326,7 +308,22 @@ def secret_message(message):
     bot.send_message(message.chat.id, 'Ы', parse_mode='Markdown')
 
 
-if __name__ == "__main__":
+def main():
+    logger.setLevel(logging.INFO)
+
+    sh = logging.StreamHandler()
+    sh.setLevel(logging.INFO)
+
+    fh = logging.FileHandler('alphabot.log', encoding='utf-8')
+    fh.setLevel(logging.INFO)
+
+    formatter = logging.Formatter(u'[%(asctime)s]: %(message)s')
+    sh.setFormatter(formatter)
+    fh.setFormatter(formatter)
+
+    logger.addHandler(sh)
+    logger.addHandler(fh)
+
     bot.remove_webhook()
     bot.set_webhook(url=config.WEBHOOK_URL_BASE + config.WEBHOOK_URL_PATH,
                     certificate=open(config.WEBHOOK_SSL_CERT, 'r'))
@@ -338,5 +335,10 @@ if __name__ == "__main__":
         'server.ssl_certificate': config.WEBHOOK_SSL_CERT,
         'server.ssl_private_key': config.WEBHOOK_SSL_PRIV
     })
+    bot.set_update_listener(listener)
     logger.info("Alpha-Bot started!")
     cherrypy.quickstart(WebhookServer(), config.WEBHOOK_URL_PATH, {'/': {}})
+
+
+if __name__ == "__main__":
+    main()
