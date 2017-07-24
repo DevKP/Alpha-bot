@@ -120,7 +120,8 @@ def file_download(file_id, patch):
 @bot.message_handler(commands=['start'])
 def start_command(message):
     logger.info(
-        "/start command by {:s}, Username {:d}".format(message.from_user.first_name, message.from_user.username))
+        "/start command by {:s}, Username {:d}"
+            .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     if message.chat.id > 0:
         bot.send_message(message.chat.id, ru_strings.START_MESSAGE['strings'][0].format(message.chat.first_name))
 
@@ -128,27 +129,31 @@ def start_command(message):
 @bot.message_handler(commands=['nextstream'])
 def next_stream_command(message):
     logger.info(
-        "/nextstream command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
+        "/nextstream command by {:s}, Username @{:s}"
+            .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     bot.send_message(message.chat.id, nextstream.get_next_stream_msg(nextstream.STREAM), parse_mode='Markdown')
 
 
 @bot.message_handler(commands=['gotospace'])
 def gotospace_command(message):
     logger.info(
-        "/gotospace command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
+        "/gotospace command by {:s}, Username @{:s}"
+            .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     bot.send_message(message.chat.id, ru_strings.OFFTOP_COMMAND_MESSAGE, parse_mode='Markdown')
 
 
 @bot.message_handler(commands=['info'])
 def info_command(message):
     logger.info(
-        "/info command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
+        "/info command by {:s}, Username @{:s}"
+            .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     bot.send_message(message.chat.id, ru_strings.INFO_COMMAND_MESSAGE, parse_mode='Markdown')
 
 
 @bot.message_handler(commands=['msg'])
 def send_msg_command(message):
-    logger.info("/msg command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
+    logger.info("/msg command by {:s}, Username @{:s}"
+                .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     if message.from_user.id in (config.owner_id, config.exodeon_id):
         logger.info("The owner detected!")
         bot.send_message(message.chat.id, ru_strings.SEND_MSG_MESSAGE['strings'][0], parse_mode='Markdown')
@@ -168,7 +173,8 @@ def send_message(message):
 
 @bot.message_handler(commands=['stk'])
 def stk_command(message):
-    logger.info("/stk command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
+    logger.info("/stk command by {:s}, Username @{:s}"
+                .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     if message.from_user.id in (config.owner_id, config.exodeon_id):
         logger.info("The owner detected!")
         bot.send_message(message.chat.id, ru_strings.SEND_STICKER_MESSAGE['stickers'][0], parse_mode='Markdown')
@@ -234,10 +240,10 @@ def persik_keyword(message):
     if message.forward_from:
         return
 
-    logger.info("!Persik command by {:s}, Username @{:s}".
-                format(message.from_user.first_name, message.from_user.username))
-
     try:
+        logger.info("!Persik command by {:s}, Username @{:s}".
+                    format(message.from_user.first_name, (message.from_user.username or "NONE")))
+
         if message.reply_to_message and message.reply_to_message.photo:
             file_info = bot.get_file(
                 message.reply_to_message.photo[len(message.reply_to_message.photo) - 1].file_id)
@@ -277,44 +283,44 @@ def persik_keyword(message):
         random_message(message, ru_strings.NA_MESSAGE, REPLY_MESSAGE)
 
         logger.info("UNKNOWN command by {:s}, Username @{:s}"
-                    .format(message.from_user.first_name, message.from_user.username))
+                    .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     except Exception as e:
         logger.error("(persik_keyword) Unexpected error: {}".format(e))
 
 
 def drink_question(message):
     logger.info("[Drink] command by {:s}, Username @{:s} | '{:s}'"
-                .format(message.from_user.first_name, message.from_user.username, message.text))
+                .format(message.from_user.first_name, (message.from_user.username or "NONE"), message.text))
     random_message(message, ru_strings.DRINK_QUESTION_MESSAGE, REPLY_MESSAGE)
 
 
 def come_here_message(message):
     logger.info("[Comehere] command by {:s}, Username @{:s} | '{:s}'"
-                .format(message.from_user.first_name, message.from_user.username, message.text))
+                .format(message.from_user.first_name, (message.from_user.username or "NONE"), message.text))
     random_message(message, ru_strings.IM_HERE_MESSAGE, REPLY_MESSAGE)
 
 
 def answer_stream(message):
     logger.info("[Nextstream] command by {:s}, Username @{:s} | '{:s}'"
-                .format(message.from_user.first_name, message.from_user.username, message.text))
+                .format(message.from_user.first_name, (message.from_user.username or "NONE"), message.text))
     next_stream_command(message)
 
 
 def answer_goto_space(message):
     logger.info("[Gotospace] command by {:s}, Username @{:s} | '{:s}'"
-                .format(message.from_user.first_name, message.from_user.username, message.text))
+                .format(message.from_user.first_name, (message.from_user.username or "NONE"), message.text))
     gotospace_command(message)
 
 
 def goodboy(message):
     logger.info("[Goodboy] command by {:s}, Username @{:s} | '{:s}')"
-                .format(message.from_user.first_name, message.from_user.username, message.text))
+                .format(message.from_user.first_name, (message.from_user.username or "NONE"), message.text))
     bot.send_sticker(message.chat.id, ru_strings.GOOD_BOY_MESSAGE['stickers'][0])
 
 
 def badboy(message):
     logger.info("[Badboy] command by {:s}, Username @{:s} | '{:s}')"
-                .format(message.from_user.first_name, message.from_user.username, message.text))
+                .format(message.from_user.first_name, (message.from_user.username or "NONE"), message.text))
     bot.send_sticker(message.chat.id, ru_strings.BAD_BOY_MESSAGE['stickers'][0])
 
 
