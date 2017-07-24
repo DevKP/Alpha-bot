@@ -44,6 +44,22 @@ class WebhookServer(object):
             raise cherrypy.HTTPError(403)
 
 
+SEND_MESSAGE, REPLY_MESSAGE = range(2)
+
+
+def random_message(message, string_list, mode):
+    strings_num = len(string_list['strings'])
+    r_number = randrange(0, strings_num, 1)
+
+    if string_list['strings'] and string_list['strings'][r_number]:
+        if mode is SEND_MESSAGE:
+            bot.send_message(message.chat.id, string_list['strings'][r_number], parse_mode='Markdown')
+        elif mode is REPLY_MESSAGE:
+            bot.reply_to(message, string_list['strings'][r_number], parse_mode='Markdown')
+    if string_list['stickers'] and string_list['stickers'][r_number]:
+        bot.send_sticker(message.chat.id, string_list['stickers'][r_number])
+
+
 # Еще один костыль
 def listener(messages):
     try:
@@ -57,29 +73,9 @@ def listener(messages):
                     bot.send_sticker(msg.chat.id, ru_strings.BOT_HI_MESSAGE['stickers'][0])
                 else:
                     logger.info("New chat member, username: @{:s}".format(msg.from_user.username))
-                    random_send_message(msg, ru_strings.HELLO_MESSAGE)
+                    random_message(msg, ru_strings.HELLO_MESSAGE, SEND_MESSAGE)
     except Exception as e:
         logger.error("(Update listener) unexpected error: {}".format(e))
-
-
-def random_send_message(message, string_list):
-    strings_num = len(string_list['strings'])
-    r_number = randrange(-1, strings_num, 1)
-
-    if string_list['strings'] and string_list['strings'][r_number]:
-        bot.send_message(message.chat.id, string_list['strings'][r_number], parse_mode='Markdown')
-    if string_list['stickers'] and string_list['stickers'][r_number]:
-        bot.send_sticker(message.chat.id, string_list['stickers'][r_number])
-
-
-def random_reply_message(message, string_list):
-    strings_num = len(string_list['strings'])
-    r_number = randrange(-1, strings_num, 1)
-
-    if string_list['strings'] and string_list['strings'][r_number]:
-        bot.reply_to(message, string_list['strings'][r_number], parse_mode='Markdown')
-    if string_list['stickers'] and string_list['stickers'][r_number]:
-        bot.send_sticker(message.chat.id, string_list['stickers'][r_number])
 
 
 @bot.message_handler(content_types=['sticker'])
@@ -221,7 +217,7 @@ def photo_receive(message):
 
     concepts = picturedetect.analise_photo(file_patch)
     if picturedetect.check_blacklist(concepts, picturedetect.BLACKLIST, logger) is True:
-        random_reply_message(message, ru_strings.SPACE_DETECT_MESSAGE)
+        random_message(message, ru_strings.SPACE_DETECT_MESSAGE, REPLY_MESSAGE)
 
         bot.send_chat_action(message.chat.id, 'typing')
 
@@ -278,7 +274,7 @@ def persik_keyword(message):
             badboy(message)
             return
 
-        random_reply_message(message, ru_strings.NA_MESSAGE)
+        random_message(message, ru_strings.NA_MESSAGE, REPLY_MESSAGE)
 
         logger.info("UNKNOWN command by {:s}, Username @{:s}"
                     .format(message.from_user.first_name, message.from_user.username))
@@ -289,13 +285,13 @@ def persik_keyword(message):
 def drink_question(message):
     logger.info("[Drink] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
-    random_reply_message(message, ru_strings.DRINK_QUESTION_MESSAGE)
+    random_message(message, ru_strings.DRINK_QUESTION_MESSAGE, REPLY_MESSAGE)
 
 
 def come_here_message(message):
     logger.info("[Comehere] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
-    random_reply_message(message, ru_strings.IM_HERE_MESSAGE)
+    random_message(message, ru_strings.IM_HERE_MESSAGE, REPLY_MESSAGE)
 
 
 def answer_stream(message):
