@@ -204,7 +204,7 @@ def photo_receive(message):
         if re.match('(?i)(\W|^).*?!п[еэ]рс[ие].*?(\W|$)', message.caption):
             bot.reply_to(message, picturedetect.reply_get_concept_msg(file_id), parse_mode='Markdown')
 
-    logger.info("Photo by Username @{:s} | ID {:s}".format(message.from_user.username, file_id))
+    logger.info("Photo by Username @{:s} | ID {:s}".format((message.from_user.username or "NONE"), file_id))
 
     file_patch = './photos/{:s}.jpg'.format(file_id)
     _file = Path(file_patch)
