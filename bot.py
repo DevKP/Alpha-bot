@@ -201,7 +201,7 @@ def photo_receive(message):
     file_id = message.photo[len(message.photo) - 1].file_id
 
     if message.caption and message.forward_from is None:
-        if re.match('(?i)(\W|^)!п[еэ]рс(ичек|ик).*?(\W|$)', message.caption):
+        if re.match('(?i)(\W|^).*?!п[еэ]рс[ие].*?(\W|$)', message.caption):
             bot.reply_to(message, picturedetect.reply_get_concept_msg(file_id), parse_mode='Markdown')
 
     logger.info("Photo by Username @{:s} | ID {:s}".format(message.from_user.username, file_id))
@@ -235,7 +235,7 @@ def photo_receive(message):
         logger.info("SPACE NOT FOUND! | ID {:s}".format(file_id))
 
 
-@bot.message_handler(regexp='(?i)(\W|^)(!п[еэ]рс(ичек|ик)).*?(\W|$)')
+@bot.message_handler(regexp='(?i)(\W|^).*?!п[еэ]рс[ие].*?(\W|$)')
 def persik_keyword(message):
     if message.forward_from:
         return
@@ -270,13 +270,13 @@ def persik_keyword(message):
                 message.text):
             answer_stream(message)
             return
-        if re.match('(?i)(\W|^).*?((зануда*?)|(космос*?)|(выгони*?)).*?(\W|$)', message.text):
+        if re.match('(?i)(\W|^).*?(тут зануда|космос|выгони).*?(\W|$)', message.text):
             answer_goto_space(message)
             return
         if re.match('(?i)(\W|^).*?(мозг|живой|красав|молодец|хорош).*?(\W|$)', message.text):
             goodboy(message)
             return
-        if re.match('(?i)(\W|^).*?(дур[ао]к|плохой|( туп)|бяка).*?(\W|$)', message.text):
+        if re.match('(?i)(\W|^).*?(дур[ао]к|плохой|туп|бяка).*?(\W|$)', message.text):
             badboy(message)
             return
 
