@@ -49,7 +49,7 @@ def listener(messages):
     try:
         for msg in messages:
             if msg.text is not None:
-                logger.info("{:s}: {:s}".format(msg.from_user.first_name, msg.text))
+                logger.info("{}: {}".format(msg.from_user.first_name, msg.text))
 
             if msg.new_chat_member is not None:
                 if msg.new_chat_member.id == config.bot_id:
@@ -57,12 +57,12 @@ def listener(messages):
                     bot.send_sticker(msg.chat.id, ru_strings.BOT_HI_MESSAGE['stickers'][0])
                 else:
                     logger.info("New chat member, username: @{:s}".format(msg.from_user.username))
-                    bot_send_message(msg,ru_strings.HELLO_MESSAGE)
+                    random_send_message(msg, ru_strings.HELLO_MESSAGE)
     except Exception as e:
         logger.error("(Update listener) unexpected error: {}".format(e))
 
 
-def bot_send_message(message, string_list):
+def random_send_message(message, string_list):
     strings_num = len(string_list['strings'])
     r_number = randrange(-1, strings_num, 1)
 
@@ -72,7 +72,7 @@ def bot_send_message(message, string_list):
         bot.send_sticker(message.chat.id, string_list['stickers'][r_number])
 
 
-def bot_reply_message(message, string_list):
+def random_reply_message(message, string_list):
     strings_num = len(string_list['strings'])
     r_number = randrange(-1, strings_num, 1)
 
@@ -198,7 +198,7 @@ def send_sticker(message):
 def photo_receive(message):
     file_id = message.photo[len(message.photo) - 1].file_id
 
-    if message.caption:
+    if message.caption and message.forward_from is None:
         if re.match('(?i)(\W|^)!п[еэ]рс(ичек|ик).*?(\W|$)', message.caption):
             bot.reply_to(message, picturedetect.reply_get_concept_msg(file_id), parse_mode='Markdown')
 
@@ -221,7 +221,7 @@ def photo_receive(message):
 
     concepts = picturedetect.analise_photo(file_patch)
     if picturedetect.check_blacklist(concepts, picturedetect.BLACKLIST, logger) is True:
-        bot_reply_message(message, ru_strings.SPACE_DETECT_MESSAGE)
+        random_reply_message(message, ru_strings.SPACE_DETECT_MESSAGE)
 
         bot.send_chat_action(message.chat.id, 'typing')
 
@@ -274,11 +274,11 @@ def persik_keyword(message):
         if re.match('(?i)(\W|^).*?(мозг|живой|красав|молодец|хорош).*?(\W|$)', message.text):
             goodboy(message)
             return
-        if re.match('(?i)(\W|^).*?(дур[ао]к|плохой|( туп)).*?(\W|$)', message.text):
+        if re.match('(?i)(\W|^).*?(дур[ао]к|плохой|( туп)|бяка).*?(\W|$)', message.text):
             badboy(message)
             return
 
-        bot_reply_message(message, ru_strings.NA_MESSAGE)
+        random_reply_message(message, ru_strings.NA_MESSAGE)
 
         logger.info("UNKNOWN command by {:s}, Username @{:s}"
                     .format(message.from_user.first_name, message.from_user.username))
@@ -289,13 +289,13 @@ def persik_keyword(message):
 def drink_question(message):
     logger.info("[Drink] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
-    bot_reply_message(message, ru_strings.DRINK_QUESTION_MESSAGE)
+    random_reply_message(message, ru_strings.DRINK_QUESTION_MESSAGE)
 
 
 def come_here_message(message):
     logger.info("[Comehere] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
-    bot_reply_message(message, ru_strings.IM_HERE_MESSAGE)
+    random_reply_message(message, ru_strings.IM_HERE_MESSAGE)
 
 
 def answer_stream(message):
