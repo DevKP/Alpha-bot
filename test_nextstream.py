@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 
 from nextstream import get_next_stream_msg
-from picturedetect import check_blacklist, BLACKLIST
 
 
 def test_nextstream_future():
@@ -36,41 +35,3 @@ def test_nextstream_past():
                       'Место пуска: Байконур, Казахстан\n\n' \
                       '[Ссылка на трансляцию]()\n\n' \
                       '*Внимание! Учтите, что трансляция начинается за 20-30 минут до пуска!*\n//\n\n//'
-
-
-def test_check_in_blacklist():
-    concepts = [{
-        'name': "black word",
-    }]
-
-    blacklist = {
-        'black word'
-    }
-    is_black = check_blacklist(concepts, blacklist)
-    assert is_black is True
-
-
-def test_check_not_in_blacklist():
-    concepts = [{
-        'name': "black word",
-    }]
-
-    blacklist = {
-        'white word'
-    }
-    is_black = check_blacklist(concepts, blacklist)
-    assert is_black is False
-
-
-def test_check_current_blacklist():
-    concepts = [
-        {
-            'name': "космос"
-        },
-        {
-            'name': "Сатурн (планета)"
-        }
-    ]
-
-    is_black = check_blacklist(concepts, BLACKLIST)
-    assert is_black is True

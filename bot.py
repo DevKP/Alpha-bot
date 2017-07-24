@@ -8,7 +8,6 @@ from random import randint
 from time import sleep
 
 import cherrypy
-import pymorphy2
 import requests
 import telebot
 
@@ -18,7 +17,6 @@ import picturedetect
 import ru_strings
 
 bot = telebot.TeleBot(config.token)
-morph = pymorphy2.MorphAnalyzer()
 
 cherrypy.config.update({'log.screen': False,
                         'log.access_file': '',
@@ -28,20 +26,6 @@ cherrypy.config.update({'log.screen': False,
 # telebot.logger.setLevel(logging.DEBUG)
 
 logger = logging.getLogger('alphabot')
-logger.setLevel(logging.INFO)
-
-sh = logging.StreamHandler()
-sh.setLevel(logging.INFO)
-
-fh = logging.FileHandler('alphabot.log', encoding='utf-8')
-fh.setLevel(logging.INFO)
-
-formatter = logging.Formatter(u'[%(asctime)s]: %(message)s')
-sh.setFormatter(formatter)
-fh.setFormatter(formatter)
-
-logger.addHandler(sh)
-logger.addHandler(fh)
 
 
 class WebhookServer(object):
@@ -78,10 +62,6 @@ def listener(messages):
     except Exception as e:
         logger.error("Unexpected error: {}".format(e))
 
-
-bot.set_update_listener(listener)
-
-
 @bot.message_handler(content_types=['sticker'])
 def sticker_message(msg):
     logger.info("{:s}: [STICKER] {:s}".format(msg.from_user.first_name, msg.sticker.file_id))
@@ -92,45 +72,6 @@ def left_chat_message(msg):
     logger.info("Left chat member, username: @{:s}".format(msg.from_user.username))
     bot.send_message(msg.chat.id, ru_strings.GOODBYE_MESSAGE['strings'][0], parse_mode='Markdown')
     bot.send_sticker(msg.chat.id, ru_strings.GOODBYE_MESSAGE['stickers'][0])
-
-
-def get_tags(word):
-    required_grammemes = set()
-    if word.tag.gender:
-        required_grammemes.add(word.tag.gender)
-    if word.tag.case:
-        required_grammemes.add(word.tag.case)
-    if word.tag.number:
-        required_grammemes.add(word.tag.number)
-    return required_grammemes
-
-
-def get_answer(*names):
-    words = [morph.parse(name)[0] for name in names]
-
-    answer_template = "Я думаю, это {}"
-
-    if all([x.tag.POS == "NOUN" for x in words]):
-        return answer_template.format(", ".join(names)), len(names) - 1
-
-    required_grammemes = [get_tags(word) for word in words]
-
-    coherence = 0
-
-    answer = answer_template.format(words[0].inflect(required_grammemes[0]).word)
-
-    for i in range(1, len(words)):
-        word = words[i].inflect(required_grammemes[i - 1])
-        if not word:
-            word = words[i].inflect(required_grammemes[i])
-            answer += ", "
-            coherence += 1
-        else:
-            answer += " "
-
-        answer += word.word
-
-    return answer, coherence
 
 
 def file_download(file_id, patch):
@@ -158,48 +99,6 @@ def file_download(file_id, patch):
             sleep(3)
 
     return None
-
-
-def reply_get_concept_msg(photo_id):
-    file_patch = './photos/{:s}.jpg'.format(photo_id)
-    _file = Path(file_patch)
-    if _file.is_file() is not True:
-        file_patch = file_download(photo_id, './photos/')
-
-    concepts = picturedetect.analise_photo(file_patch)
-    name1 = concepts[0]['name']
-    name2 = concepts[1]['name']
-    name3 = concepts[2]['name']
-
-    # Костыль костылевский
-    if name1 == 'нет человек':
-        name1 = 'безлюдное'
-    if name2 == 'нет человек':
-        name2 = 'безлюдное'
-    if name3 == 'нет человек':
-        name3 = 'безлюдное'
-
-    names = list((name1, name2, name3))
-
-    answers = list()
-
-    i = 0
-
-    for j in range(6):
-        answer, coherence = get_answer(*names)
-        answers.append((answer, coherence))
-        names[i], names[i + 1] = names[i + 1], names[i]
-        i = (i + 1) if i < len(names) - 2 else 0
-
-    def sort_answers(a):
-        return a[1]
-
-    answers.sort(key=sort_answers)
-
-    # answer += "\n*Думаю, это {}, {}, {}!*".format(name1, name2, name3)
-
-    logger.info("[WHATISTHIS] Photo ID {} - [{}|{}|{}]".format(photo_id, name1, name2, name3))
-    return "*{}!*".format(answers[0][0])
 
 
 @bot.message_handler(commands=['start'])
@@ -256,7 +155,7 @@ def stk_command(message):
     logger.info("/stk command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
     if message.from_user.id in (config.owner_id, config.exodeon_id):
         logger.info("The owner detected!")
-        bot.send_message(message.chat.id, ru_strings.SENDSTICKER_MESSAGE['strings'][0], parse_mode='Markdown')
+        bot.send_message(message.chat.id, ru_strings.SEND_STICKER_MESSAGE['stickers'][0], parse_mode='Markdown')
         bot.register_next_step_handler(message, send_sticker)
     else:
         logger.info("This isn't the owner!")
@@ -268,7 +167,7 @@ def send_sticker(message):
             if message.text.find('/cancel') != -1:
                 bot.send_message(message.chat.id, ru_strings.CANCEL_MESSAGE['strings'][0], parse_mode='Markdown')
             else:
-                bot.send_message(message.chat.id, ru_strings.SENDSTICKER_MESSAGE['stickers'][1], parse_mode='Markdown')
+                bot.send_message(message.chat.id, ru_strings.SEND_STICKER_MESSAGE['stickers'][1], parse_mode='Markdown')
                 bot.register_next_step_handler(message, send_sticker)
     else:
         bot.send_sticker(config.send_chat_id, message.sticker.file_id)
@@ -279,9 +178,9 @@ def send_sticker(message):
 def photo_receive(message):
     file_id = message.photo[len(message.photo) - 1].file_id
 
-    if message.forward_from and message.caption:
+    if message.caption:
         if re.match('(?i)(\W|^).*?(!п[еэ]рс(ичек|ик).*?)(\W|$)', message.caption):
-            bot.reply_to(message, reply_get_concept_msg(file_id), parse_mode='Markdown')
+            bot.reply_to(message, picturedetect.reply_get_concept_msg(file_id), parse_mode='Markdown')
 
     logger.info("Photo by Username @{:s} | ID {:s}".format(message.from_user.username, file_id))
 
@@ -324,7 +223,7 @@ def persik_keyword(message):
         if message.reply_to_message and message.reply_to_message.photo:
             file_info = bot.get_file(
                 message.reply_to_message.photo[len(message.reply_to_message.photo) - 1].file_id)
-            msg = reply_get_concept_msg(file_info.file_id)
+            msg = picturedetect.reply_get_concept_msg(file_info.file_id)
 
             if msg is None:
                 bot.reply_to(message, ru_strings.SOME_ERROR_MESSAGE['strings'], parse_mode='Markdown')
@@ -375,7 +274,7 @@ def come_here_message(message):
     logger.info("[Come here] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
     strings_num = len(ru_strings.IM_HERE_MESSAGE['strings'])
-    r_number = randint(0, strings_num - 1)
+    r_number = randint(0, strings_num + 1)
     bot.reply_to(message, ru_strings.IM_HERE_MESSAGE['strings'][r_number], parse_mode='Markdown')
 
 
@@ -409,7 +308,22 @@ def secret_message(message):
     bot.send_message(message.chat.id, 'Ы', parse_mode='Markdown')
 
 
-if __name__ == "__main__":
+def main():
+    logger.setLevel(logging.INFO)
+
+    sh = logging.StreamHandler()
+    sh.setLevel(logging.INFO)
+
+    fh = logging.FileHandler('alphabot.log', encoding='utf-8')
+    fh.setLevel(logging.INFO)
+
+    formatter = logging.Formatter(u'[%(asctime)s]: %(message)s')
+    sh.setFormatter(formatter)
+    fh.setFormatter(formatter)
+
+    logger.addHandler(sh)
+    logger.addHandler(fh)
+
     bot.remove_webhook()
     bot.set_webhook(url=config.WEBHOOK_URL_BASE + config.WEBHOOK_URL_PATH,
                     certificate=open(config.WEBHOOK_SSL_CERT, 'r'))
@@ -421,5 +335,10 @@ if __name__ == "__main__":
         'server.ssl_certificate': config.WEBHOOK_SSL_CERT,
         'server.ssl_private_key': config.WEBHOOK_SSL_PRIV
     })
+    bot.set_update_listener(listener)
     logger.info("Alpha-Bot started!")
     cherrypy.quickstart(WebhookServer(), config.WEBHOOK_URL_PATH, {'/': {}})
+
+
+if __name__ == "__main__":
+    main()
