@@ -37,8 +37,11 @@ DRINK_QUESTION_MESSAGE = {'strings': [
     '*Не пей, подумой!*'],
     'stickers': None}
 
-GOODBOY_MESSAGE = {'strings': None,
+GOOD_BOY_MESSAGE = {'strings': None,
                    'stickers': ['CAADAgADQQMAApFfCAABzoVI0eydHSgC']}
+
+BAD_BOY_MESSAGE = {'strings': None,
+                   'stickers': ['CAADAgADIQMAApFfCAABP2eivT2lvA4C']}
 
 SEND_STICKER_MESSAGE = {'strings': ['Пришли стикер, я отправлю :3! /cancel если передумал.',
                                     '*Это не стикер!*'],

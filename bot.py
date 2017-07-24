@@ -62,6 +62,7 @@ def listener(messages):
     except Exception as e:
         logger.error("Unexpected error: {}".format(e))
 
+
 @bot.message_handler(content_types=['sticker'])
 def sticker_message(msg):
     logger.info("{:s}: [STICKER] {:s}".format(msg.from_user.first_name, msg.sticker.file_id))
@@ -179,7 +180,7 @@ def photo_receive(message):
     file_id = message.photo[len(message.photo) - 1].file_id
 
     if message.caption:
-        if re.match('(?i)(\W|^).*?(!п[еэ]рс(ичек|ик).*?)(\W|$)', message.caption):
+        if re.match('(?i)(\W|^)!п[еэ]рс(ичек|ик).*?(\W|$)', message.caption):
             bot.reply_to(message, picturedetect.reply_get_concept_msg(file_id), parse_mode='Markdown')
 
     logger.info("Photo by Username @{:s} | ID {:s}".format(message.from_user.username, file_id))
@@ -214,7 +215,7 @@ def photo_receive(message):
         logger.info("SPACE NOT FOUND! | ID {:s}".format(file_id))
 
 
-@bot.message_handler(regexp='(?i)(\W|^)(!п[еэ]рс(ичек|ик).*?)(\W|$)')
+@bot.message_handler(regexp='(?i)(\W|^)!п[еэ]рс(ичек|ик).*?(\W|$)')
 def persik_keyword(message):
     logger.info("!Persik command by {:s}, Username @{:s}".
                 format(message.from_user.first_name, message.from_user.username))
@@ -250,8 +251,11 @@ def persik_keyword(message):
         if re.match('(?i)(\W|^).*?((зануда*?)|(космос*?)|(выгони*?)).*?(\W|$)', message.text):
             answer_goto_space(message)
             return
-        if re.match('(?i)(\W|^).*?((мозг)|(живой)|(красав)|(молодец)|(хорош)).*?(\W|$)', message.text):
+        if re.match('(?i)(\W|^).*?(мозг|живой|красав|молодец|хорош).*?(\W|$)', message.text):
             goodboy(message)
+            return
+        if re.match('(?i)(\W|^).*?(дур[ао]к|плохой|( туп)).*?(\W|$)', message.text):
+            badboy(message)
             return
 
         bot.reply_to(message, ru_strings.NA_MESSAGE['strings'][0], parse_mode='Markdown')
@@ -263,7 +267,7 @@ def persik_keyword(message):
 
 
 def drink_question(message):
-    logger.info("[Come here] command by {:s}, Username @{:s} | '{:s}'"
+    logger.info("[Comehere] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
     strings_num = len(ru_strings.DRINK_QUESTION_MESSAGE['strings'])
     r_number = randint(0, strings_num - 1)
@@ -271,15 +275,15 @@ def drink_question(message):
 
 
 def come_here_message(message):
-    logger.info("[Come here] command by {:s}, Username @{:s} | '{:s}'"
+    logger.info("[Comehere] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
     strings_num = len(ru_strings.IM_HERE_MESSAGE['strings'])
-    r_number = randint(0, strings_num + 1)
+    r_number = randint(0, strings_num - 1)
     bot.reply_to(message, ru_strings.IM_HERE_MESSAGE['strings'][r_number], parse_mode='Markdown')
 
 
 def answer_stream(message):
-    logger.info("[Next stream] command by {:s}, Username @{:s} | '{:s}'"
+    logger.info("[Nextstream] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
     _next_stream(message)
 
@@ -290,17 +294,16 @@ def answer_goto_space(message):
     _goto_space(message)
 
 
-@bot.message_handler(regexp='(?i)(\W|^)((мозг*?)|(живой*?)|(красав*?)|(молодец*?)|(хороший*?))(\W|$)')
-def goodboy_message(message):
-    if message.reply_to_message is not None:
-        if message.reply_to_message.from_user.id == config.bot_id:
-            goodboy(message)
-
-
 def goodboy(message):
-    logger.info("[Good boy] command by {:s}, Username @{:s} | '{:s}')"
+    logger.info("[Goodboy] command by {:s}, Username @{:s} | '{:s}')"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
-    bot.send_sticker(message.chat.id, ru_strings.GOODBOY_MESSAGE['stickers'][0])
+    bot.send_sticker(message.chat.id, ru_strings.GOOD_BOY_MESSAGE['stickers'][0])
+
+
+def badboy(message):
+    logger.info("[Badboy] command by {:s}, Username @{:s} | '{:s}')"
+                .format(message.from_user.first_name, message.from_user.username, message.text))
+    bot.send_sticker(message.chat.id, ru_strings.BAD_BOY_MESSAGE['stickers'][0])
 
 
 @bot.message_handler(regexp='(?i)(\W|^)(Привет Т[её]ма)(\W|$)')
