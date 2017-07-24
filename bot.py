@@ -4,7 +4,7 @@ import os
 import re
 import shutil
 from pathlib import Path
-from random import randint
+from random import randrange
 from time import sleep
 
 import cherrypy
@@ -57,10 +57,29 @@ def listener(messages):
                     bot.send_sticker(msg.chat.id, ru_strings.BOT_HI_MESSAGE['stickers'][0])
                 else:
                     logger.info("New chat member, username: @{:s}".format(msg.from_user.username))
-                    r_number = randint(0, 5)
-                    bot.send_message(msg.chat.id, ru_strings.HELLO_MESSAGE['strings'][r_number])
+                    bot_send_message(msg,ru_strings.HELLO_MESSAGE)
     except Exception as e:
-        logger.error("Unexpected error: {}".format(e))
+        logger.error("(Update listener) unexpected error: {}".format(e))
+
+
+def bot_send_message(message, string_list):
+    strings_num = len(string_list['strings'])
+    r_number = randrange(-1, strings_num, 1)
+
+    if string_list['strings'] and string_list['strings'][r_number]:
+        bot.send_message(message.chat.id, string_list['strings'][r_number], parse_mode='Markdown')
+    if string_list['stickers'] and string_list['stickers'][r_number]:
+        bot.send_sticker(message.chat.id, string_list['stickers'][r_number])
+
+
+def bot_reply_message(message, string_list):
+    strings_num = len(string_list['strings'])
+    r_number = randrange(-1, strings_num, 1)
+
+    if string_list['strings'] and string_list['strings'][r_number]:
+        bot.reply_to(message, string_list['strings'][r_number], parse_mode='Markdown')
+    if string_list['stickers'] and string_list['stickers'][r_number]:
+        bot.send_sticker(message.chat.id, string_list['stickers'][r_number])
 
 
 @bot.message_handler(content_types=['sticker'])
@@ -91,7 +110,7 @@ def file_download(file_id, patch):
                     file.raw.decode_content = True
                     shutil.copyfileobj(file.raw, f)
             except Exception as e:
-                logger.error("Unexpected error: {}".format(e))
+                logger.error("(Write to file) Unexpected error: {}".format(e))
                 return None
 
             return file_patch
@@ -103,7 +122,7 @@ def file_download(file_id, patch):
 
 
 @bot.message_handler(commands=['start'])
-def start_message(message):
+def start_command(message):
     logger.info(
         "/start command by {:s}, Username {:d}".format(message.from_user.first_name, message.from_user.username))
     if message.chat.id > 0:
@@ -111,28 +130,28 @@ def start_message(message):
 
 
 @bot.message_handler(commands=['nextstream'])
-def _next_stream(message):
+def next_stream_command(message):
     logger.info(
         "/nextstream command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
     bot.send_message(message.chat.id, nextstream.get_next_stream_msg(nextstream.STREAM), parse_mode='Markdown')
 
 
 @bot.message_handler(commands=['gotospace'])
-def _goto_space(message):
+def gotospace_command(message):
     logger.info(
         "/gotospace command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
     bot.send_message(message.chat.id, ru_strings.OFFTOP_COMMAND_MESSAGE, parse_mode='Markdown')
 
 
 @bot.message_handler(commands=['info'])
-def start_message(message):
+def info_command(message):
     logger.info(
         "/info command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
     bot.send_message(message.chat.id, ru_strings.INFO_COMMAND_MESSAGE, parse_mode='Markdown')
 
 
 @bot.message_handler(commands=['msg'])
-def start_message(message):
+def send_msg_command(message):
     logger.info("/msg command by {:s}, Username @{:s}".format(message.from_user.first_name, message.from_user.username))
     if message.from_user.id in (config.owner_id, config.exodeon_id):
         logger.info("The owner detected!")
@@ -202,14 +221,13 @@ def photo_receive(message):
 
     concepts = picturedetect.analise_photo(file_patch)
     if picturedetect.check_blacklist(concepts, picturedetect.BLACKLIST, logger) is True:
-        bot.reply_to(message, ru_strings.SPACE_DETECT_MESSAGE['strings'][0], parse_mode='Markdown')
-        bot.send_sticker(message.chat.id, ru_strings.SPACE_DETECT_MESSAGE['stickers'][0])
+        bot_reply_message(message, ru_strings.SPACE_DETECT_MESSAGE)
 
         bot.send_chat_action(message.chat.id, 'typing')
 
         sleep(8)
 
-        _goto_space(message)
+        gotospace_command(message)
         logger.info("SPACE FOUND! | ID {:s}".format(file_id))
     else:
         logger.info("SPACE NOT FOUND! | ID {:s}".format(file_id))
@@ -217,6 +235,9 @@ def photo_receive(message):
 
 @bot.message_handler(regexp='(?i)(\W|^)!п[еэ]рс(ичек|ик).*?(\W|$)')
 def persik_keyword(message):
+    if message.forward_from:
+        return
+
     logger.info("!Persik command by {:s}, Username @{:s}".
                 format(message.from_user.first_name, message.from_user.username))
 
@@ -225,7 +246,6 @@ def persik_keyword(message):
             file_info = bot.get_file(
                 message.reply_to_message.photo[len(message.reply_to_message.photo) - 1].file_id)
             msg = picturedetect.reply_get_concept_msg(file_info.file_id)
-
             if msg is None:
                 bot.reply_to(message, ru_strings.SOME_ERROR_MESSAGE['strings'], parse_mode='Markdown')
                 bot.send_sticker(message.chat.id, ru_strings.SOME_ERROR_MESSAGE['stickers'][0])
@@ -258,40 +278,36 @@ def persik_keyword(message):
             badboy(message)
             return
 
-        bot.reply_to(message, ru_strings.NA_MESSAGE['strings'][0], parse_mode='Markdown')
+        bot_reply_message(message, ru_strings.NA_MESSAGE)
 
         logger.info("UNKNOWN command by {:s}, Username @{:s}"
                     .format(message.from_user.first_name, message.from_user.username))
     except Exception as e:
-        logger.error("Unexpected error: {}".format(e))
+        logger.error("(persik_keyword) Unexpected error: {}".format(e))
 
 
 def drink_question(message):
-    logger.info("[Comehere] command by {:s}, Username @{:s} | '{:s}'"
+    logger.info("[Drink] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
-    strings_num = len(ru_strings.DRINK_QUESTION_MESSAGE['strings'])
-    r_number = randint(0, strings_num - 1)
-    bot.reply_to(message, ru_strings.DRINK_QUESTION_MESSAGE['strings'][r_number], parse_mode='Markdown')
+    bot_reply_message(message, ru_strings.DRINK_QUESTION_MESSAGE)
 
 
 def come_here_message(message):
     logger.info("[Comehere] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
-    strings_num = len(ru_strings.IM_HERE_MESSAGE['strings'])
-    r_number = randint(0, strings_num - 1)
-    bot.reply_to(message, ru_strings.IM_HERE_MESSAGE['strings'][r_number], parse_mode='Markdown')
+    bot_reply_message(message, ru_strings.IM_HERE_MESSAGE)
 
 
 def answer_stream(message):
     logger.info("[Nextstream] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
-    _next_stream(message)
+    next_stream_command(message)
 
 
 def answer_goto_space(message):
     logger.info("[Gotospace] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, message.from_user.username, message.text))
-    _goto_space(message)
+    gotospace_command(message)
 
 
 def goodboy(message):
