@@ -279,7 +279,7 @@ def persik_keyword(message):
         if re.match('(?i)(\W|^).*?(мозг|живой|красав|молодец|хорош).*?(\W|$)', message.text):
             goodboy(message)
             return
-        if re.match('(?i)(\W|^).*?(дур[ао]к|плохой|туп|бяка).*?(\W|$)', message.text):
+        if re.match('(?i)(\W|^).*?(плохой|туп|бяка).*?(\W|$)', message.text):
             badboy(message)
             return
         if re.match('(?i)(\W|^).*?((за)?бан(ь)?|заблокируй|накажи|фас).*?(\W|$)', message.text):
@@ -287,6 +287,9 @@ def persik_keyword(message):
             return
         if re.match('(?i)(\W|^).*?(рулетка|барабан).*?(\W|$)', message.text):
             roulette_game(message)
+            return
+        if re.match('(?i)(\W|^).*?(дур[ао]к|пид(о)?р|говно|д[еыи]бил).*?(\W|$)', message.text):
+            ban_user(message, message.from_user.id, 120)
             return
 
         random_message(message, ru_strings.NA_MESSAGE, REPLY_MESSAGE)
