@@ -6,6 +6,9 @@ import shutil
 from pathlib import Path
 from random import randrange
 from time import sleep
+import calendar
+from datetime import timedelta
+from datetime import datetime
 
 import cherrypy
 import requests
@@ -262,7 +265,7 @@ def persik_keyword(message):
         if re.match('(?i)(\W|^).*?(.*?пить.*?или.*?не).*?(\W|$)', message.text):
             drink_question(message)
             return
-        if re.match('(?i)(\W|^).*?((иди сюда)|(ты где)|(ты тут)|(привет)|(кыс)).*?(\W|$)', message.text):
+        if re.match('(?i)(\W|^).*?(иди сюда|ты где|ты тут|привет|кыс).*?(\W|$)', message.text):
             come_here_message(message)
             return
         if re.match(
@@ -279,6 +282,10 @@ def persik_keyword(message):
         if re.match('(?i)(\W|^).*?(дур[ао]к|плохой|туп|бяка).*?(\W|$)', message.text):
             badboy(message)
             return
+        if re.match('(?i)(\W|^).*?((за)?бан(ь)?|заблокируй|накажи|фас).*?(\W|$)', message.text):
+            if message.reply_to_message:
+                ban_user_message(message)
+            return
 
         random_message(message, ru_strings.NA_MESSAGE, REPLY_MESSAGE)
 
@@ -287,6 +294,16 @@ def persik_keyword(message):
     except Exception as e:
         logger.error("(persik_keyword) Unexpected error: {}".format(e))
 
+
+def ban_user_message(message):
+    time_seconds = 35
+
+    d = datetime.utcnow()
+    d = d + timedelta(0, time_seconds)
+    timestamp = calendar.timegm(d.utctimetuple())
+
+    bot.restrict_chat_member(message.chat.id, message.reply_to_message.from_user.id, timestamp, False, False, False,
+                             False)
 
 def drink_question(message):
     logger.info("[Drink] command by {:s}, Username @{:s} | '{:s}'"
