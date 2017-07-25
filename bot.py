@@ -283,20 +283,9 @@ def persik_keyword(message):
             badboy(message)
             return
         if re.match('(?i)(\W|^).*?((за)?бан(ь)?|заблокируй|накажи|фас).*?(\W|$)', message.text):
-            if message.from_user.id in (config.owner_id, config.exodeon_id):
-                if message.reply_to_message:
-                    timestr = re.search('[0-9]{1,3}', message.text)
-                    if timestr:
-                        time_ = int(timestr.group(0))
-                    else:
-                        time_ = 35
-
-                    ban_user_message(message.reply_to_message, message.reply_to_message.from_user.id, time_)
-                    bot.send_message(message.chat.id, "*Пользователь {} забанен на {}сек.*"
-                                     .format(message.reply_to_message.from_user.first_name, time_),
-                                     parse_mode='Markdown')
+            ban_user_command(message)
             return
-        if re.match('(?i)(\W|^).*?(рулетка).*?(\W|$)', message.text):
+        if re.match('(?i)(\W|^).*?(рулетка|барабан).*?(\W|$)', message.text):
             roulette_game(message)
             return
 
@@ -308,11 +297,26 @@ def persik_keyword(message):
         logger.error("(persik_keyword) Unexpected error: {}".format(e))
 
 
+def ban_user_command(message):
+    if message.from_user.id in (config.owner_id, config.exodeon_id):
+        if message.reply_to_message:
+            timestr = re.search('[0-9]{1,4}', message.text)
+            if timestr:
+                time_ = int(timestr.group(0))
+            else:
+                time_ = 35
+
+            ban_user(message.reply_to_message, message.reply_to_message.from_user.id, time_)
+            bot.send_message(message.chat.id, "*Пользователь {} забанен на {}сек.*"
+                             .format(message.reply_to_message.from_user.first_name, time_),
+                             parse_mode='Markdown')
+
+
 def roulette_game(message):
     r_number = randrange(0, 6)
 
     if r_number == 3:
-        ban_user_message(message, message.from_user.id, 600)
+        ban_user(message, message.from_user.id, 600)
         bot.send_message(message.chat.id,
                          "*Пользователь {} застрелился!*".format(message.from_user.first_name),
                          parse_mode='Markdown')
@@ -322,7 +326,7 @@ def roulette_game(message):
                          parse_mode='Markdown')
 
 
-def ban_user_message(message, user_id, time):
+def ban_user(message, user_id, time):
     d = datetime.utcnow()
     d = d + timedelta(0, time)
     timestamp = calendar.timegm(d.utctimetuple())
