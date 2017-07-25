@@ -6,6 +6,9 @@ import shutil
 from pathlib import Path
 from random import randrange
 from time import sleep
+import calendar
+from datetime import timedelta
+from datetime import datetime
 
 import cherrypy
 import requests
@@ -262,7 +265,7 @@ def persik_keyword(message):
         if re.match('(?i)(\W|^).*?(.*?пить.*?или.*?не).*?(\W|$)', message.text):
             drink_question(message)
             return
-        if re.match('(?i)(\W|^).*?((иди сюда)|(ты где)|(ты тут)|(привет)|(кыс)).*?(\W|$)', message.text):
+        if re.match('(?i)(\W|^).*?(иди сюда|ты где|ты тут|привет|кыс).*?(\W|$)', message.text):
             come_here_message(message)
             return
         if re.match(
@@ -276,8 +279,19 @@ def persik_keyword(message):
         if re.match('(?i)(\W|^).*?(мозг|живой|красав|молодец|хорош).*?(\W|$)', message.text):
             goodboy(message)
             return
-        if re.match('(?i)(\W|^).*?(дур[ао]к|плохой|туп|бяка).*?(\W|$)', message.text):
+        if re.match('(?i)(\W|^).*?(плохой|туп|бяка).*?(\W|$)', message.text):
             badboy(message)
+            return
+        if re.match('(?i)(\W|^).*?((за)?бан(ь)?|заблокируй|накажи|фас).*?(\W|$)', message.text):
+            ban_user_command(message)
+            return
+        if re.match('(?i)(\W|^).*?(рулетка|барабан).*?(\W|$)', message.text):
+            roulette_game(message)
+            return
+        if re.match('(?i)(\W|^).*?(дур[ао]к|пид[аоэ]?р|говно|д[еыи]бил|г[оа]ндон).*?(\W|$)', message.text):
+            ban_user(message, message.from_user.id, 120)
+            bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][0]
+                             .format(message.from_user.first_name, 120), parse_mode='Markdown')
             return
 
         random_message(message, ru_strings.NA_MESSAGE, REPLY_MESSAGE)
@@ -286,6 +300,44 @@ def persik_keyword(message):
                     .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     except Exception as e:
         logger.error("(persik_keyword) Unexpected error: {}".format(e))
+
+
+def ban_user_command(message):
+    if message.from_user.id in (config.owner_id, config.exodeon_id):
+        if message.reply_to_message:
+            timestr = re.search('[0-9]{1,4}', message.text)
+            if timestr:
+                time_ = int(timestr.group(0))
+            else:
+                time_ = 35
+
+            ban_user(message.reply_to_message, message.reply_to_message.from_user.id, time_)
+            bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][0]
+                             .format(message.reply_to_message.from_user.first_name, time_), parse_mode='Markdown')
+            logger.info("User {:s}, Username @{:s} - banned!"
+                        .format(message.from_user.first_name, (message.from_user.username or "NONE")))
+
+
+def roulette_game(message):
+    r_number = randrange(0, 6)
+
+    if r_number == 3:
+        ban_user(message, message.from_user.id, 1200)
+        bot.send_message(message.chat.id,
+                         ru_strings.ROULETTE_MESSAGE['strings'][0].format(message.from_user.first_name),
+                         parse_mode='Markdown')
+    else:
+        bot.send_message(message.chat.id,
+                         ru_strings.ROULETTE_MESSAGE['strings'][1].format(message.from_user.first_name),
+                         parse_mode='Markdown')
+
+
+def ban_user(message, user_id, time):
+    d = datetime.utcnow()
+    d = d + timedelta(0, time)
+    timestamp = calendar.timegm(d.utctimetuple())
+
+    bot.restrict_chat_member(message.chat.id, user_id, timestamp, False, False, False, False)
 
 
 def drink_question(message):
@@ -328,6 +380,10 @@ def badboy(message):
 def secret_message(message):
     bot.send_message(message.chat.id, 'Ы', parse_mode='Markdown')
 
+
+@bot.message_handler(regexp='(?i)(\W|^)(Альфа Центавра)(\W|$)')
+def secret_message(message):
+    bot.reply_to(message, '*Понад усе!*', parse_mode='Markdown')
 
 def main():
     logger.setLevel(logging.INFO)
