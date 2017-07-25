@@ -288,8 +288,10 @@ def persik_keyword(message):
         if re.match('(?i)(\W|^).*?(рулетка|барабан).*?(\W|$)', message.text):
             roulette_game(message)
             return
-        if re.match('(?i)(\W|^).*?(дур[ао]к|пид[аоэ]?р|говно|д[еыи]бил).*?(\W|$)', message.text):
+        if re.match('(?i)(\W|^).*?(дур[ао]к|пид[аоэ]?р|говно|д[еыи]бил|г[оа]ндон).*?(\W|$)', message.text):
             ban_user(message, message.from_user.id, 120)
+            bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][0]
+                             .format(message.from_user.first_name, 120), parse_mode='Markdown')
             return
 
         random_message(message, ru_strings.NA_MESSAGE, REPLY_MESSAGE)
@@ -320,7 +322,7 @@ def roulette_game(message):
     r_number = randrange(0, 6)
 
     if r_number == 3:
-        ban_user(message, message.from_user.id, 600)
+        ban_user(message, message.from_user.id, 1200)
         bot.send_message(message.chat.id,
                          ru_strings.ROULETTE_MESSAGE['strings'][0].format(message.from_user.first_name),
                          parse_mode='Markdown')
