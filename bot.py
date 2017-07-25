@@ -283,8 +283,21 @@ def persik_keyword(message):
             badboy(message)
             return
         if re.match('(?i)(\W|^).*?((за)?бан(ь)?|заблокируй|накажи|фас).*?(\W|$)', message.text):
-            if message.reply_to_message:
-                ban_user_message(message)
+            if message.from_user.id in (config.owner_id, config.exodeon_id):
+                if message.reply_to_message:
+                    timestr = re.search('[0-9]{1,3}', message.text)
+                    if timestr:
+                        time_ = int(timestr.group(0))
+                    else:
+                        time_ = 35
+
+                    ban_user_message(message.reply_to_message, message.reply_to_message.from_user.id, time_)
+                    bot.send_message(message.chat.id, "*Пользователь {} забанен на {}сек.*"
+                                     .format(message.reply_to_message.from_user.first_name, time_),
+                                     parse_mode='Markdown')
+            return
+        if re.match('(?i)(\W|^).*?(рулетка).*?(\W|$)', message.text):
+            roulette_game(message)
             return
 
         random_message(message, ru_strings.NA_MESSAGE, REPLY_MESSAGE)
@@ -295,15 +308,27 @@ def persik_keyword(message):
         logger.error("(persik_keyword) Unexpected error: {}".format(e))
 
 
-def ban_user_message(message):
-    time_seconds = 35
+def roulette_game(message):
+    r_number = randrange(0, 6)
 
+    if r_number == 3:
+        ban_user_message(message, message.from_user.id, 600)
+        bot.send_message(message.chat.id,
+                         "*Пользователь {} застрелился!*".format(message.from_user.first_name),
+                         parse_mode='Markdown')
+    else:
+        bot.send_message(message.chat.id,
+                         "*Пользователю {} очень повезло!*".format(message.from_user.first_name),
+                         parse_mode='Markdown')
+
+
+def ban_user_message(message, user_id, time):
     d = datetime.utcnow()
-    d = d + timedelta(0, time_seconds)
+    d = d + timedelta(0, time)
     timestamp = calendar.timegm(d.utctimetuple())
 
-    bot.restrict_chat_member(message.chat.id, message.reply_to_message.from_user.id, timestamp, False, False, False,
-                             False)
+    bot.restrict_chat_member(message.chat.id, user_id, timestamp, False, False, False, False)
+
 
 def drink_question(message):
     logger.info("[Drink] command by {:s}, Username @{:s} | '{:s}'"
@@ -345,6 +370,10 @@ def badboy(message):
 def secret_message(message):
     bot.send_message(message.chat.id, 'Ы', parse_mode='Markdown')
 
+
+@bot.message_handler(regexp='(?i)(\W|^)(Альфа Центавра)(\W|$)')
+def secret_message(message):
+    bot.reply_to(message, '*Понад усе!*', parse_mode='Markdown')
 
 def main():
     logger.setLevel(logging.INFO)
