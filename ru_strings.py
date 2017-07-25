@@ -56,6 +56,13 @@ SEND_MSG_MESSAGE = {'strings': ['Пришли сообщение! /cancel есл
 CANCEL_MESSAGE = {'strings': ['*Окей, не хочешь - как хочешь!*'],
                   'stickers': None}
 
+BAN_MESSAGE = {'strings': ["*Пользователь {} забанен на {}сек.*"],
+               'stickers': None}
+
+ROULETTE_MESSAGE = {'strings': ["*Пользователь {} застрелился!*",
+                                "*Пользователю {} очень повезло!*"],
+                    'stickers': None}
+
 NA_MESSAGE = {'strings': ['*Не понял вопрос.. D:*',
                           '*Попробуй спросить еще раз.*',
                           '*Хватит над персиком издеваться!((*'],

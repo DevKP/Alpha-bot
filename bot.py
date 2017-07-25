@@ -307,9 +307,10 @@ def ban_user_command(message):
                 time_ = 35
 
             ban_user(message.reply_to_message, message.reply_to_message.from_user.id, time_)
-            bot.send_message(message.chat.id, "*Пользователь {} забанен на {}сек.*"
-                             .format(message.reply_to_message.from_user.first_name, time_),
-                             parse_mode='Markdown')
+            bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][0]
+                             .format(message.reply_to_message.from_user.first_name, time_), parse_mode='Markdown')
+            logger.info("User {:s}, Username @{:s} - banned!"
+                        .format(message.from_user.first_name, (message.from_user.username or "NONE")))
 
 
 def roulette_game(message):
@@ -318,11 +319,11 @@ def roulette_game(message):
     if r_number == 3:
         ban_user(message, message.from_user.id, 600)
         bot.send_message(message.chat.id,
-                         "*Пользователь {} застрелился!*".format(message.from_user.first_name),
+                         ru_strings.ROULETTE_MESSAGE['strings'][0].format(message.from_user.first_name),
                          parse_mode='Markdown')
     else:
         bot.send_message(message.chat.id,
-                         "*Пользователю {} очень повезло!*".format(message.from_user.first_name),
+                         ru_strings.ROULETTE_MESSAGE['strings'][1].format(message.from_user.first_name),
                          parse_mode='Markdown')
 
 
