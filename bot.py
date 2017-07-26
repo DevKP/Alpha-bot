@@ -288,7 +288,7 @@ def persik_keyword(message):
         if re.match('(?i)(\W|^).*?(рулетка|барабан).*?(\W|$)', message.text):
             roulette_game(message)
             return
-        if re.match('(?i)(\W|^).*?(дур[ао]к|пид[аоэ]?р|говно|д[еыи]бил|г[оа]ндон).*?(\W|$)', message.text):
+        if re.match('(?i)(\W|^).*?(дур[ао]к|пид[аоэ]?р|говно|д[еыи]бил|г[оа]ндон|лох).*?(\W|$)', message.text):
             ban_user(message, message.from_user.id, 120)
             bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][0]
                              .format(message.from_user.first_name, 120), parse_mode='Markdown')
