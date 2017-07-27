@@ -279,7 +279,7 @@ def persik_keyword(message):
         if re.match('(?i)(\W|^).*?(мозг|живой|красав|молодец|хорош).*?(\W|$)', message.text):
             goodboy(message)
             return
-        if re.match('(?i)(\W|^).*?(плохой|туп|бяка).*?(\W|$)', message.text):
+        if re.match('(?i)(\W|^).*?(плохой|туп|гад|бяка).*?(\W|$)', message.text):
             badboy(message)
             return
         if re.match('(?i)(\W|^).*?((за)?бан(ь)?|заблокируй|накажи|фас).*?(\W|$)', message.text):
@@ -288,10 +288,13 @@ def persik_keyword(message):
         if re.match('(?i)(\W|^).*?(рулетка|барабан).*?(\W|$)', message.text):
             roulette_game(message)
             return
-        if re.match('(?i)(\W|^).*?(дур[ао]к|пид[аоэ]?р|говно|д[еыи]бил|г[оа]ндон|лох).*?(\W|$)', message.text):
+        if re.match('(?i)(\W|^).*?(дур[ао]к|пид[аоэ]?р|говно|д[еыи]бил|г[оа]ндон|лох|долбоеб).*?(\W|$)', message.text):
+            bot.send_sticker(message.chat.id, 'CAADAgADJwMAApFfCAABfVrdPYRn8x4C')
+            sleep(4)
             ban_user(message, message.from_user.id, 120)
             bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][0]
                              .format(message.from_user.first_name, 120), parse_mode='Markdown')
+            bot.send_sticker(message.chat.id, 'CAADAgADPQMAApFfCAABt8Meib23A_QC')
             return
 
         random_message(message, ru_strings.NA_MESSAGE, REPLY_MESSAGE)
