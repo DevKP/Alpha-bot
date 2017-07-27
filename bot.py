@@ -195,6 +195,13 @@ def send_sticker(message):
         logger.info("Sending sticker {:s} to chat {:d}".format(message.sticker.file_id, config.send_chat_id))
 
 
+@bot.message_handler(commands=['getuserid'])
+def get_user_id_message(message):
+    logger.info("/getuserid command by {:s}, Username @{:s}"
+                .format(message.from_user.first_name, (message.from_user.username or "NONE")))
+    bot.reply_to(message, ru_strings.GET_ID_MESSAGE['strings'][0].format(message.from_user.id), parse_mode='Markdown')
+
+
 @bot.message_handler(content_types=["photo"])
 def photo_receive(message):
     file_id = message.photo[len(message.photo) - 1].file_id
