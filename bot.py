@@ -315,11 +315,16 @@ def ban_user_command(message):
             if time_str:
                 time_ = int(time_str.group(0))
             else:
-                time_ = 35
+                time_ = 30
 
             ban_user(message.reply_to_message, message.reply_to_message.from_user.id, time_)
-            bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][0]
-                             .format(message.reply_to_message.from_user.first_name, time_), parse_mode='Markdown')
+            if time_ < 30:
+                bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][1]
+                                 .format(message.reply_to_message.from_user.first_name, time_), parse_mode='Markdown')
+            else:
+                bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][0]
+                                 .format(message.reply_to_message.from_user.first_name), parse_mode='Markdown')
+
             logger.info("User {:s}, Username @{:s} - banned!"
                         .format(message.from_user.first_name, (message.from_user.username or "NONE")))
 
