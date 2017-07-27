@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 token = '407478787:AAGhAJQXIZuKnSd0AOjDc2xhKiOmrKI9_Rk'
+provider_token = '361519591:TEST:36f78445e159f9c11e7ff86bb9184e01'
 
 WEBHOOK_HOST = '176.37.39.165'
 WEBHOOK_PORT = 8443  # 443, 80, 88, 8443

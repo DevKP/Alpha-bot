@@ -14,6 +14,8 @@ import cherrypy
 import requests
 import telebot
 
+from telebot import types
+
 import config
 import nextstream
 import picturedetect
@@ -25,8 +27,6 @@ cherrypy.config.update({'log.screen': False,
                         'log.access_file': '',
                         'log.error_file': ''})
 
-# loggerr = telebot.logger
-# telebot.logger.setLevel(logging.DEBUG)
 
 logger = logging.getLogger('alphabot')
 
@@ -176,7 +176,7 @@ def stk_command(message):
                 .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     if any(message.from_user.id == user for user in config.allowed_users):
         logger.info("The owner detected!")
-        bot.send_message(message.chat.id, ru_strings.SEND_STICKER_MESSAGE['stickers'][0], parse_mode='Markdown')
+        bot.send_message(message.chat.id, ru_strings.SEND_STICKER_MESSAGE['strings'][0], parse_mode='Markdown')
         bot.register_next_step_handler(message, send_sticker)
     else:
         logger.info("This isn't the owner!")
@@ -200,6 +200,20 @@ def get_user_id_message(message):
     logger.info("/getuserid command by {:s}, Username @{:s}"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     bot.reply_to(message, ru_strings.GET_ID_MESSAGE['strings'][0].format(message.from_user.id), parse_mode='Markdown')
+
+
+@bot.message_handler(commands=['donate'])
+def get_user_id_message(message):
+    logger.info("/donate command by {:s}, Username @{:s}"
+                .format(message.from_user.first_name, (message.from_user.username or "NONE")))
+    print(message)
+    keyboard = types.InlineKeyboardMarkup()
+    url_button = types.InlineKeyboardButton(
+        text="Пожертвовать", url="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=P9NSFS4W7PYZC")
+    keyboard.add(url_button)
+    bot.send_message(message.chat.id,
+                     'Граждане трудящиеся, попрошу внести по рублю в кассу на развитие отечественного персика!',
+                     reply_markup=keyboard)
 
 
 @bot.message_handler(content_types=["photo"])
@@ -287,6 +301,10 @@ def persik_keyword(message):
             return
         if re.match('(?i)(\W|^).*?((за)?бан(ь)?|заблокируй|накажи|фас).*?(\W|$)', message.text):
             ban_user_command(message)
+            return
+        if re.match('(?i)(\W|^).*?((за)?бaн(ь)?).*?(\W|$)', message.text):
+            bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][0]
+                             .format(message.reply_to_message.from_user.first_name, 30), parse_mode='Markdown')
             return
         if re.match('(?i)(\W|^).*?(улитка|барабан).*?(\W|$)', message.text):
             roulette_game(message)
@@ -400,6 +418,11 @@ def secret_message(message):
 @bot.message_handler(regexp='(?i)(\W|^)кто захватит мир(\W|$)')
 def secret_message(message):
     bot.reply_to(message, '*Команда Alpha Centauri!*', parse_mode='Markdown')
+
+
+@bot.message_handler(regexp='(?i)(\W|^)слава украине(\W|$)')
+def secret_message(message):
+    bot.reply_to(message, '*Героям слава!*', parse_mode='Markdown')
 
 
 def main():
