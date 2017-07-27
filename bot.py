@@ -122,34 +122,30 @@ def file_download(file_id, patch):
 
 @bot.message_handler(commands=['start'])
 def start_command(message):
-    logger.info(
-        "/start command by {:s}, Username {:d}"
-            .format(message.from_user.first_name, (message.from_user.username or "NONE")))
+    logger.info("/start command by {:s}, Username {:d}"
+                .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     if message.chat.id > 0:
         bot.send_message(message.chat.id, ru_strings.START_MESSAGE['strings'][0].format(message.chat.first_name))
 
 
 @bot.message_handler(commands=['nextstream'])
 def next_stream_command(message):
-    logger.info(
-        "/nextstream command by {:s}, Username @{:s}"
-            .format(message.from_user.first_name, (message.from_user.username or "NONE")))
+    logger.info("/nextstream command by {:s}, Username @{:s}"
+                .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     bot.send_message(message.chat.id, nextstream.get_next_stream_msg(nextstream.STREAM), parse_mode='Markdown')
 
 
 @bot.message_handler(commands=['gotospace'])
 def gotospace_command(message):
-    logger.info(
-        "/gotospace command by {:s}, Username @{:s}"
-            .format(message.from_user.first_name, (message.from_user.username or "NONE")))
+    logger.info("/gotospace command by {:s}, Username @{:s}"
+                .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     bot.send_message(message.chat.id, ru_strings.OFFTOP_COMMAND_MESSAGE, parse_mode='Markdown')
 
 
 @bot.message_handler(commands=['info'])
 def info_command(message):
-    logger.info(
-        "/info command by {:s}, Username @{:s}"
-            .format(message.from_user.first_name, (message.from_user.username or "NONE")))
+    logger.info("/info command by {:s}, Username @{:s}"
+                .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     bot.send_message(message.chat.id, ru_strings.INFO_COMMAND_MESSAGE, parse_mode='Markdown')
 
 
@@ -157,7 +153,7 @@ def info_command(message):
 def send_msg_command(message):
     logger.info("/msg command by {:s}, Username @{:s}"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE")))
-    if message.from_user.id in (config.owner_id, config.exodeon_id):
+    if any(message.from_user.id == user for user in config.allowed_users):
         logger.info("The owner detected!")
         bot.send_message(message.chat.id, ru_strings.SEND_MSG_MESSAGE['strings'][0], parse_mode='Markdown')
         bot.register_next_step_handler(message, send_message)
@@ -178,7 +174,7 @@ def send_message(message):
 def stk_command(message):
     logger.info("/stk command by {:s}, Username @{:s}"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE")))
-    if message.from_user.id in (config.owner_id, config.exodeon_id):
+    if any(message.from_user.id == user for user in config.allowed_users):
         logger.info("The owner detected!")
         bot.send_message(message.chat.id, ru_strings.SEND_STICKER_MESSAGE['stickers'][0], parse_mode='Markdown')
         bot.register_next_step_handler(message, send_sticker)
@@ -285,10 +281,10 @@ def persik_keyword(message):
         if re.match('(?i)(\W|^).*?((за)?бан(ь)?|заблокируй|накажи|фас).*?(\W|$)', message.text):
             ban_user_command(message)
             return
-        if re.match('(?i)(\W|^).*?(рулетка|барабан).*?(\W|$)', message.text):
+        if re.match('(?i)(\W|^).*?(улитка|барабан).*?(\W|$)', message.text):
             roulette_game(message)
             return
-        if re.match('(?i)(\W|^).*?(дур[ао]к|пид[аоэ]?р|говно|д[еыи]бил|г[оа]ндон|лох|долбоеб).*?(\W|$)', message.text):
+        if re.match('(?i)(\W|^).*?(дур[ао]к|пид[аоэ]?р|говно|д[еыи]бил|г[оа]ндон|лох).*?(\W|$)', message.text):
             bot.send_sticker(message.chat.id, 'CAADAgADJwMAApFfCAABfVrdPYRn8x4C')
             sleep(4)
             ban_user(message, message.from_user.id, 120)
@@ -306,11 +302,11 @@ def persik_keyword(message):
 
 
 def ban_user_command(message):
-    if message.from_user.id in (config.owner_id, config.exodeon_id):
+    if any(message.from_user.id == user for user in config.allowed_users):
         if message.reply_to_message:
-            timestr = re.search('[0-9]{1,4}', message.text)
-            if timestr:
-                time_ = int(timestr.group(0))
+            time_str = re.search('[0-9]{1,5}', message.text)
+            if time_str:
+                time_ = int(time_str.group(0))
             else:
                 time_ = 35
 
@@ -379,14 +375,20 @@ def badboy(message):
     bot.send_sticker(message.chat.id, ru_strings.BAD_BOY_MESSAGE['stickers'][0])
 
 
-@bot.message_handler(regexp='(?i)(\W|^)(Привет Т[её]ма)(\W|$)')
+@bot.message_handler(regexp='(?i)(\W|^)Привет Т[её]ма(\W|$)')
 def secret_message(message):
     bot.send_message(message.chat.id, 'Ы', parse_mode='Markdown')
 
 
-@bot.message_handler(regexp='(?i)(\W|^)(Альфа Центавра)(\W|$)')
+@bot.message_handler(regexp='(?i)(\W|^)Альфа Центавра(\W|$)')
 def secret_message(message):
     bot.reply_to(message, '*Понад усе!*', parse_mode='Markdown')
+
+
+@bot.message_handler(regexp='(?i)(\W|^)кто захватит мир(\W|$)')
+def secret_message(message):
+    bot.reply_to(message, '*Команда Alpha Centauri!*', parse_mode='Markdown')
+
 
 def main():
     logger.setLevel(logging.INFO)
