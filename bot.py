@@ -67,6 +67,7 @@ def random_message(message, string_list, mode):
 def listener(messages):
     try:
         for msg in messages:
+            #print(msg)
             if msg.new_chat_member is not None:
                 if msg.new_chat_member.id == config.bot_id:
                     bot.send_message(msg.chat.id, ru_strings.BOT_HI_MESSAGE["strings"][0])
@@ -86,6 +87,22 @@ def sticker_message(msg):
     logger.info("{:s}: [STICKER] {:s}".format(msg.from_user.first_name, msg.sticker.file_id))
 
 
+@bot.message_handler(content_types=['document'])
+def document_message(msg):
+    logger.info("{:s}: [DOCUMENT] {:s}".format(msg.from_user.first_name, msg.document.file_id))
+    file_download(msg.document.file_id, './documents/')
+
+
+@bot.message_handler(content_types=['audio'])
+def audio_message(msg):
+    logger.info("{:s}: [AUDIO] {:s}".format(msg.from_user.first_name, msg.audio.file_id))
+
+
+@bot.message_handler(content_types=['video'])
+def audio_message(msg):
+    logger.info("{:s}: [AUDIO] {:s}".format(msg.from_user.first_name, msg.video.file_id))
+
+
 @bot.message_handler(content_types=['left_chat_member'])
 def left_chat_message(msg):
     logger.info("Left chat member, username: @{:s}".format(msg.from_user.username))
@@ -93,7 +110,7 @@ def left_chat_message(msg):
     bot.send_sticker(msg.chat.id, ru_strings.GOODBYE_MESSAGE['stickers'][0])
 
 
-def file_download(file_id, patch):
+def file_download(file_id, path):
     file_info = bot.get_file(file_id)
     _, file_extension = os.path.splitext(file_info.file_path)
     filename = file_id
@@ -103,7 +120,7 @@ def file_download(file_id, patch):
         file = requests.get('https://api.telegram.org/file/bot{}/{}'.format(config.token, file_info.file_path),
                             stream=True)
         if file.status_code == 200:
-            file_patch = "".join([patch, filename, file_extension])
+            file_patch = "".join([path, filename, file_extension])
             try:
                 with open(file_patch, 'wb') as f:
                     file.raw.decode_content = True
@@ -197,9 +214,26 @@ def send_sticker(message):
 
 @bot.message_handler(commands=['getuserid'])
 def get_user_id_message(message):
+    if message.forward_from:
+        return
     logger.info("/getuserid command by {:s}, Username @{:s}"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     bot.reply_to(message, ru_strings.GET_ID_MESSAGE['strings'][0].format(message.from_user.id), parse_mode='Markdown')
+
+
+@bot.message_handler(commands=['getphoto'])
+def get_file_message(message):
+    logger.info("/getuserid command by {:s}, Username @{:s}"
+                .format(message.from_user.first_name, (message.from_user.username or "NONE")))
+    bot.send_photo(message.chat.id, message.text[10:], message.message_id)
+
+
+@bot.message_handler(commands=['getdocument'])
+def get_document_message(message):
+    logger.info("/getdocument command by {:s}, Username @{:s}"
+                .format(message.from_user.first_name, (message.from_user.username or "NONE")))
+    print(message.text[13:])
+    bot.send_document(message.chat.id, message.text[13:], message.message_id)
 
 
 @bot.message_handler(commands=['donate'])
