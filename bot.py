@@ -67,9 +67,6 @@ def random_message(message, string_list, mode):
 def listener(messages):
     try:
         for msg in messages:
-            if msg.text is not None:
-                logger.info("{}: {}".format(msg.from_user.first_name, msg.text))
-
             if msg.new_chat_member is not None:
                 if msg.new_chat_member.id == config.bot_id:
                     bot.send_message(msg.chat.id, ru_strings.BOT_HI_MESSAGE["strings"][0])
@@ -77,6 +74,9 @@ def listener(messages):
                 else:
                     logger.info("New chat member, username: @{:s}".format(msg.from_user.username))
                     random_message(msg, ru_strings.HELLO_MESSAGE, SEND_MESSAGE)
+            else:
+                if msg.text is not None:
+                    logger.info("{}: {}".format(msg.from_user.first_name, msg.text))
     except Exception as e:
         logger.error("(Update listener) unexpected error: {}".format(e))
 
@@ -303,8 +303,13 @@ def persik_keyword(message):
             ban_user_command(message)
             return
         if re.match('(?i)(\W|^).*?((за)?бaн(ь)?).*?(\W|$)', message.text):
+            time_str = re.search('[0-9]{1,5}', message.text)
+            if time_str is not None:
+                time_ = int(time_str.group(0))
+            else:
+                time_ = 30
             bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][0]
-                             .format(message.reply_to_message.from_user.first_name, 30), parse_mode='Markdown')
+                             .format(message.reply_to_message.from_user.first_name, time_), parse_mode='Markdown')
             return
         if re.match('(?i)(\W|^).*?(улитка|барабан).*?(\W|$)', message.text):
             roulette_game(message)
