@@ -279,49 +279,11 @@ def persik_keyword(message):
         if len(message.text) < 9:
             come_here_message(message)
             return
-        if re.match('(?i)(\W|^).*?(.*?пить.*?или.*?не).*?(\W|$)', message.text):
-            drink_question(message)
-            return
-        if re.match('(?i)(\W|^).*?(иди сюда|ты где|ты тут|привет|кыс).*?(\W|$)', message.text):
-            come_here_message(message)
-            return
-        if re.match(
-                '(?i)(\W|^).*?((когда.*?стрим|трансляция|(зап|п)уск)|((стрим|трансляция|(зап|п)уск).*?когда)).*?(\W|$)',
-                message.text):
-            answer_stream(message)
-            return
-        if re.match('(?i)(\W|^).*?(тут зануда|космос|выгони).*?(\W|$)', message.text):
-            answer_goto_space(message)
-            return
-        if re.match('(?i)(\W|^).*?(мозг|живой|красав|молодец|хорош).*?(\W|$)', message.text):
-            goodboy(message)
-            return
-        if re.match('(?i)(\W|^).*?(плохой|туп|гад|бяка).*?(\W|$)', message.text):
-            badboy(message)
-            return
-        if re.match('(?i)(\W|^).*?((за)?бан(ь)?|заблокируй|накажи|фас).*?(\W|$)', message.text):
-            ban_user_command(message)
-            return
-        if re.match('(?i)(\W|^).*?((за)?бaн(ь)?).*?(\W|$)', message.text):
-            time_str = re.search('[0-9]{1,5}', message.text)
-            if time_str is not None:
-                time_ = int(time_str.group(0))
-            else:
-                time_ = 30
-            bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][0]
-                             .format(message.reply_to_message.from_user.first_name, time_), parse_mode='Markdown')
-            return
-        if re.match('(?i)(\W|^).*?(улитка|барабан).*?(\W|$)', message.text):
-            roulette_game(message)
-            return
-        if re.match('(?i)(\W|^).*?(дур[ао]к|пид[аоэ]?р|говно|д[еыи]бил|г[оа]ндон|лох).*?(\W|$)', message.text):
-            bot.send_sticker(message.chat.id, 'CAADAgADJwMAApFfCAABfVrdPYRn8x4C')
-            sleep(4)
-            ban_user(message, message.from_user.id, 120)
-            bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][0]
-                             .format(message.from_user.first_name, 120), parse_mode='Markdown')
-            bot.send_sticker(message.chat.id, 'CAADAgADPQMAApFfCAABt8Meib23A_QC')
-            return
+
+        for template in MESSAGE_TEMPLATES:
+            if re.match(template[0], message.text):
+                template[1](message)
+                return
 
         random_message(message, ru_strings.NA_MESSAGE, REPLY_MESSAGE)
 
@@ -329,6 +291,25 @@ def persik_keyword(message):
                     .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     except Exception as e:
         logger.error("(persik_keyword) Unexpected error: {}".format(e))
+
+
+def true_ban_user(message):
+    bot.send_sticker(message.chat.id, 'CAADAgADJwMAApFfCAABfVrdPYRn8x4C')
+    sleep(4)
+    ban_user(message, message.from_user.id, 120)
+    bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][0]
+                     .format(message.from_user.first_name, 120), parse_mode='Markdown')
+    bot.send_sticker(message.chat.id, 'CAADAgADPQMAApFfCAABt8Meib23A_QC')
+
+
+def false_ban_user(message):
+    time_str = re.search('[0-9]{1,5}', message.text)
+    if time_str is not None:
+        time_ = int(time_str.group(0))
+    else:
+        time_ = 30
+    bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][0]
+                     .format(message.reply_to_message.from_user.first_name, time_), parse_mode='Markdown')
 
 
 def ban_user_command(message):
@@ -408,6 +389,20 @@ def badboy(message):
     logger.info("[Badboy] command by {:s}, Username @{:s} | '{:s}')"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE"), message.text))
     bot.send_sticker(message.chat.id, ru_strings.BAD_BOY_MESSAGE['stickers'][0])
+
+MESSAGE_TEMPLATES = [
+    ['(?i)(\W|^).*?(дур[ао]к|пид[аоэ]?р|говно|д[еыи]бил|г[оа]ндон|лох).*?(\W|$)', true_ban_user],
+    ['(?i)(\W|^).*?(плохой|туп|гад|бяка).*?(\W|$)', badboy],
+    ['(?i)(\W|^).*?((за)?бaн(ь)?).*?(\W|$)', false_ban_user],
+    ['(?i)(\W|^).*?((за)?бан(ь)?|заблокируй|накажи|фас).*?(\W|$)', ban_user_command],
+    ['(?i)(\W|^).*?((когда.*?стрим|трансляция|(зап|п)уск)|((стрим|трансляция|(зап|п)уск).*?когда)).*?(\W|$)',
+     answer_stream],
+    ['(?i)(\W|^).*?(иди сюда|ты где|ты тут|привет|кыс).*?(\W|$)', come_here_message],
+    ['(?i)(\W|^).*?(тут зануда|космос|выгони).*?(\W|$)', answer_goto_space],
+    ['(?i)(\W|^).*?(мозг|живой|красав|молодец|хорош).*?(\W|$)', goodboy],
+    ['(?i)(\W|^).*?(.*?пить.*?или.*?не).*?(\W|$)', drink_question],
+    ['(?i)(\W|^).*?(улитка|барабан).*?(\W|$)', roulette_game]
+]
 
 
 @bot.message_handler(regexp='(?i)(\W|^)Привет Т[её]ма(\W|$)')
