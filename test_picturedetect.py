@@ -1,4 +1,4 @@
-from picturedetect import check_blacklist, BLACKLIST, process_words, process_concepts
+from picturedetect import check_blacklist, BLACKLIST, process_words, process_concepts, analise_photo, clean
 
 
 def test_check_in_blacklist():
@@ -107,3 +107,20 @@ def test_process_concepts():
     message, _ = process_concepts(concepts)
 
     assert message == "*Я думаю, это пушистый кот, стол!*"
+
+
+def test_clean_parentheses():
+    name = clean("дизайн (оформление)")
+    assert name == "дизайн"
+
+
+def test_clean_parentheses_and_wrong_chars():
+    name = clean("диза+йн (оформление)")
+    assert name == "дизайн"
+
+
+def test_analise_photo():
+    concepts = analise_photo("tests_data/foil.jpeg")
+    assert concepts is not None
+    message, _ = process_concepts(concepts)
+    assert message is not None
