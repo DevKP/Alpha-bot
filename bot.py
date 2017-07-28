@@ -280,9 +280,9 @@ def persik_keyword(message):
             come_here_message(message)
             return
 
-        for analise in MESSAGE_TEMPLATES:
-            if re.match(analise[0], message.text):
-                analise[1](message)
+        for template in MESSAGE_TEMPLATES:
+            if re.match(template[0], message.text):
+                template[1](message)
                 return
 
         random_message(message, ru_strings.NA_MESSAGE, REPLY_MESSAGE)
