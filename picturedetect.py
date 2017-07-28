@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 from pathlib import Path
 
 import pymorphy2
@@ -106,6 +107,13 @@ MAIN_POS = ["NOUN"]
 SINGLE_POS = ["ADVB"]
 
 
+def clean(name):
+    name = REPLACE_MAP.get(name, name)
+    name = re.sub(r'(.*) \(.*\)', r'\1', name)
+    name = re.sub(r'([^\w\s])', r'', name)
+    return name
+
+
 def process_words(concepts):
     """
     1) Сортируем так, чтобы прилагательные были перед существительными
@@ -116,7 +124,7 @@ def process_words(concepts):
     :param concepts: слова подлежащие обработке
     :return: слова, сгруппированные в словосочетания
     """
-    names = [REPLACE_MAP.get(concept['name'], concept['name']) for concept in concepts]
+    names = [clean(concept['name']) for concept in concepts]
 
     words = [morph.parse(name)[0] for name in names]
 
