@@ -27,10 +27,12 @@ def get_file_path(timeutc, x, y):
 
 session = requests.Session()
 png = Image.new('RGB', (tile_width * image_scale, tile_height * image_scale))
+last_update_time = datetime.now()
 
 
 def update_image():
     time_now = datetime.utcnow() - timedelta(minutes=40)
+
     print("Updating image..")
     try:
         for x in range(image_scale):
@@ -42,8 +44,11 @@ def update_image():
                                  tile_width * (x + 1), tile_height * (y + 1)))
 
         png.save(himawari['imagePath'], 'PNG')
+
         print("Done!")
     except Exception as e:
         print(e)
 
+    global last_update_time
+    last_update_time = datetime.now()
     threading.Timer(10 * 60, update_image).start()
