@@ -20,6 +20,7 @@ import config
 import nextstream
 import picturedetect
 import ru_strings
+import himawari
 
 bot = telebot.TeleBot(config.token)
 
@@ -150,6 +151,15 @@ def next_stream_command(message):
     logger.info("/nextstream command by {:s}, Username @{:s}"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     bot.send_message(message.chat.id, nextstream.get_next_stream_msg(nextstream.STREAM), parse_mode='Markdown')
+
+
+@bot.message_handler(commands=['himawari'])
+def gotospace_command(message):
+    logger.info("/himawari command by {:s}, Username @{:s}"
+                .format(message.from_user.first_name, (message.from_user.username or "NONE")))
+    himawari.update_image()
+    with open('./himawaripictures/lastpicture.png', 'rb') as picture:
+        bot.send_photo(message.chat.id, picture)
 
 
 @bot.message_handler(commands=['gotospace'])
