@@ -157,10 +157,13 @@ def next_stream_command(message):
 def gotospace_command(message):
     logger.info("/himawari command by {:s}, Username @{:s}"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE")))
-    with open('./himawaripictures/lastpicture.png', 'rb') as picture:
-        bot.send_photo(message.chat.id, picture, himawari.last_update_time.strftime("%Y.%m.%d %H:%M:%S"))
-    with open('./himawaripictures/lastpicture.png', 'rb') as picture:
-        bot.send_document(message.chat.id, picture)
+    try:
+        with open('./himawaripictures/lastpicture.png', 'rb') as picture:
+            bot.send_photo(message.chat.id, picture, himawari.last_update_time.strftime("%Y.%m.%d %H:%M:%S"))
+        with open('./himawaripictures/lastpicture.png', 'rb') as picture:
+            bot.send_document(message.chat.id, picture)
+    except Exception as e:
+        logger.error(e)
 
 
 @bot.message_handler(commands=['gotospace'])

@@ -31,7 +31,7 @@ last_update_time = datetime.now()
 
 
 def update_image():
-    time_now = datetime.utcnow() - timedelta(minutes=40)
+    time_now = datetime.utcnow() - timedelta(minutes=60)
 
     print("Updating image..")
     try:
