@@ -4,6 +4,7 @@ from datetime import datetime
 from datetime import timedelta
 from PIL import Image
 import requests
+from os import rename
 from io import BytesIO
 import threading
 
@@ -31,7 +32,10 @@ last_update_time = datetime.now()
 
 
 def update_image():
+    global last_update_time
     time_now = datetime.utcnow() - timedelta(minutes=60)
+
+    rename(himawari['imagePath'], './himawaripictures/{}.png'.format(last_update_time.strftime("%Y%m%d%H%M%S")))
 
     print("Updating image..")
     try:
@@ -49,6 +53,5 @@ def update_image():
     except Exception as e:
         print(e)
 
-    global last_update_time
     last_update_time = datetime.now()
     threading.Timer(10 * 60, update_image).start()
