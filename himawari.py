@@ -8,6 +8,8 @@ from os import rename
 from io import BytesIO
 import threading
 
+from utils import logger
+
 himawari = {
     'imagePath': './himawaripictures/lastpicture.png',
     'imageUrl': 'http://himawari8.nict.go.jp/img/D531106/8d/550'
@@ -35,6 +37,7 @@ def update_image():
     global last_update_time
     time_now = datetime.utcnow() - timedelta(minutes=60)
 
+    logger.info("[himawari] Updating image..")
     rename(himawari['imagePath'], './himawaripictures/{}.png'.format(last_update_time.strftime("%Y%m%d%H%M%S")))
 
     print("Updating image..")
@@ -49,9 +52,9 @@ def update_image():
 
         png.save(himawari['imagePath'], 'PNG')
 
-        print("Done!")
+        logger.info("[himawari] Done!")
     except Exception as e:
-        print(e)
+        logger.info("[himawari] {}".format(e))
 
     last_update_time = datetime.now()
     threading.Timer(10 * 60, update_image).start()

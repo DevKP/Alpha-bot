@@ -6,7 +6,8 @@ import pymorphy2
 from clarifai.rest import ClarifaiApp
 
 import config
-from bot import file_download, logger
+from bot import file_download
+from utils import logger
 
 KEY = 'c3e552013fa64ff2a3beea5fefbb597e'
 app = ClarifaiApp(api_key=KEY)

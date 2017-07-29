@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import shutil
+import threading
 from pathlib import Path
 from random import randrange
 from time import sleep
@@ -21,15 +22,13 @@ import nextstream
 import picturedetect
 import ru_strings
 import himawari
+from utils import logger
 
 bot = telebot.TeleBot(config.token)
 
 cherrypy.config.update({'log.screen': False,
                         'log.access_file': '',
                         'log.error_file': ''})
-
-
-logger = logging.getLogger('alphabot')
 
 
 class WebhookServer(object):
@@ -502,7 +501,7 @@ def main():
     })
     bot.set_update_listener(listener)
 
-    himawari.update_image()
+    threading.Timer(10, himawari.update_image).start()
 
     logger.info("Alpha-Bot started!")
     cherrypy.quickstart(WebhookServer(), config.WEBHOOK_URL_PATH, {'/': {}})
