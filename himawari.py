@@ -7,6 +7,7 @@ import requests
 from os import rename
 from io import BytesIO
 import threading
+from pathlib import Path
 
 from utils import logger
 
@@ -38,9 +39,7 @@ def update_image():
     time_now = datetime.utcnow() - timedelta(minutes=60)
 
     logger.info("[himawari] Updating image..")
-    rename(himawari['imagePath'], './himawaripictures/{}.png'.format(last_update_time.strftime("%Y%m%d%H%M%S")))
 
-    print("Updating image..")
     try:
         for x in range(image_scale):
             for y in range(image_scale):
@@ -50,11 +49,15 @@ def update_image():
                 png.paste(tile, (tile_width * x, tile_height * y,
                                  tile_width * (x + 1), tile_height * (y + 1)))
 
+        if Path(himawari['imagePath']).is_file():
+            rename(himawari['imagePath'], './himawaripictures/{}.png'.format(last_update_time.strftime("%Y%m%d%H%M%S")))
+
         png.save(himawari['imagePath'], 'PNG')
 
         logger.info("[himawari] Done!")
     except Exception as e:
         logger.info("[himawari] {}".format(e))
+        threading.Timer(10 * 60, update_image).start()
 
     last_update_time = datetime.now()
     threading.Timer(10 * 60, update_image).start()
