@@ -157,9 +157,10 @@ def next_stream_command(message):
 def gotospace_command(message):
     logger.info("/himawari command by {:s}, Username @{:s}"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE")))
-    himawari.update_image()
     with open('./himawaripictures/lastpicture.png', 'rb') as picture:
         bot.send_photo(message.chat.id, picture)
+    with open('./himawaripictures/lastpicture.png', 'rb') as picture:
+        bot.send_document(message.chat.id, picture)
 
 
 @bot.message_handler(commands=['gotospace'])
@@ -435,7 +436,7 @@ def badboy(message):
     bot.send_sticker(message.chat.id, ru_strings.BAD_BOY_MESSAGE['stickers'][0])
 
 MESSAGE_TEMPLATES = [
-    ['(?i)(\W|^).*?(дур[ао]к|пид[аоэ]?р|говно|д[еыи]бил|г[оа]ндон|лох).*?(\W|$)', true_ban_user],
+    ['(?i)(\W|^).*?(дур[ао]к|пид[аоэ]?р|говно|д[еыи]бил|г[оа]ндон|лох|чмо).*?(\W|$)', true_ban_user],
     ['(?i)(\W|^).*?(плохой|туп|гад|бяка).*?(\W|$)', badboy],
     ['(?i)(\W|^).*?((за)?бaн(ь)?).*?(\W|$)', false_ban_user],
     ['(?i)(\W|^).*?((за)?бан(ь)?|заблокируй|накажи|фас).*?(\W|$)', ban_user_command],
@@ -497,6 +498,9 @@ def main():
         'server.ssl_private_key': config.WEBHOOK_SSL_PRIV
     })
     bot.set_update_listener(listener)
+
+    himawari.update_image()
+
     logger.info("Alpha-Bot started!")
     cherrypy.quickstart(WebhookServer(), config.WEBHOOK_URL_PATH, {'/': {}})
 

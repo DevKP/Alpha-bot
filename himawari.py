@@ -5,6 +5,7 @@ from datetime import timedelta
 from PIL import Image
 import requests
 from io import BytesIO
+import threading
 
 himawari = {
     'imagePath': './himawaripictures/lastpicture.png',
@@ -18,9 +19,10 @@ image_scale = 8
 tile_array = [[None] * image_scale] * image_scale
 
 
-def get_file_path(time, x, y):
+def get_file_path(timeutc, x, y):
     return "%s/%s/%02d/%02d/%02d%02d00_%s_%s.png" \
-           % (himawari['imageUrl'], time.year, time.month, time.day, time.hour, round(time.minute / 10) * 10, x, y)
+           % (himawari['imageUrl'], timeutc.year, timeutc.month,
+              timeutc.day, timeutc.hour, round(timeutc.minute / 10) * 10, x, y)
 
 
 session = requests.Session()
@@ -28,7 +30,8 @@ png = Image.new('RGB', (tile_width * image_scale, tile_height * image_scale))
 
 
 def update_image():
-    time_now = datetime.utcnow() - timedelta(minutes=20)
+    time_now = datetime.utcnow() - timedelta(minutes=40)
+    print("Updating image..")
     try:
         for x in range(image_scale):
             for y in range(image_scale):
@@ -39,5 +42,8 @@ def update_image():
                                  tile_width * (x + 1), tile_height * (y + 1)))
 
         png.save(himawari['imagePath'], 'PNG')
+        print("Done!")
     except Exception as e:
         print(e)
+
+    threading.Timer(10 * 60, update_image).start()
