@@ -77,9 +77,9 @@ def listener(messages):
                     random_message(msg, ru_strings.HELLO_MESSAGE, SEND_MESSAGE)
             else:
                 if msg.text is not None:
-                    logger.info("{}: {}".format(msg.from_user.first_name, msg.text))
+                    logger.info("[CHAT] {}: {}".format(msg.from_user.first_name, msg.text))
     except Exception as e:
-        logger.error("(Update listener) unexpected error: {}".format(e))
+        logger.error("[Update listener] unexpected error: {}".format(e))
 
 
 @bot.message_handler(content_types=['sticker'])
@@ -126,7 +126,7 @@ def file_download(file_id, path):
                     file.raw.decode_content = True
                     shutil.copyfileobj(file.raw, f)
             except Exception as e:
-                logger.error("(Write to file) Unexpected error: {}".format(e))
+                logger.error("[Write to file] Unexpected error: {}".format(e))
                 return None
 
             return file_patch
@@ -157,9 +157,9 @@ def gotospace_command(message):
     logger.info("/himawari command by {:s}, Username @{:s}"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     try:
-        with open('./himawaripictures/lastpicture.png', 'rb') as picture:
+        with open('./himawaripictures_lowres/latestpicture.png', 'rb') as picture:
             bot.send_photo(message.chat.id, picture, himawari.last_update_time.strftime("%Y.%m.%d %H:%M:%S"))
-        with open('./himawaripictures/lastpicture.png', 'rb') as picture:
+        with open('./himawaripictures/latestpicture.png', 'rb') as picture:
             bot.send_document(message.chat.id, picture)
     except Exception as e:
         logger.error(e)
@@ -268,7 +268,7 @@ def photo_receive(message):
     file_id = message.photo[len(message.photo) - 1].file_id
 
     if message.caption and message.forward_from is None:
-        if re.match('(?i)(\W|^).*?!п[еэ]рс[ие].*?(\W|$)', message.caption):
+        if re.match('(?i)(\W|^).*?!п[eеэ][pр][cс](и|ч[eеи]к)*?(\W|$)', message.caption):
             bot.reply_to(message, picturedetect.reply_get_concept_msg(file_id), parse_mode='Markdown')
 
     logger.info("Photo by Username @{:s} | ID {:s}".format((message.from_user.username or "NONE"), file_id))
@@ -302,7 +302,7 @@ def photo_receive(message):
         logger.info("SPACE NOT FOUND! | ID {:s}".format(file_id))
 
 
-@bot.message_handler(regexp='(?i)(\W|^).*?!п[еэ]рс[ие].*?(\W|$)')
+@bot.message_handler(regexp='(?i)(\W|^).*?!п[eеэ][pр][cс](и|ч[eеи]к).*?(\W|$)')
 def persik_keyword(message):
     if message.forward_from:
         return
@@ -323,7 +323,7 @@ def persik_keyword(message):
             bot.reply_to(message, msg, parse_mode='Markdown')
             return
 
-        if len(message.text) < 9:
+        if len(message.text) < 10:
             come_here_message(message)
             return
 
@@ -360,24 +360,33 @@ def false_ban_user(message):
 
 
 def ban_user_command(message):
-    if any(message.from_user.id == user for user in config.allowed_users):
-        if message.reply_to_message:
+    if message.reply_to_message:
+        if any(message.from_user.id == user for user in config.allowed_users) or \
+                        message.from_user.id == message.reply_to_message.from_user.id:
             time_str = re.search('[0-9]{1,5}', message.text)
             if time_str is not None:
                 time_ = int(time_str.group(0))
             else:
-                time_ = 30
+                time_ = 40
 
-            ban_user(message.reply_to_message, message.reply_to_message.from_user.id, time_)
-            if time_ < 30:
+            user = message.reply_to_message.from_user.first_name
+            username = message.reply_to_message.from_user.username
+            try:
+                ban_user(message.reply_to_message, message.reply_to_message.from_user.id, time_)
+            except:
+                ban_user(message, message.from_user.id, time_)
+                user = message.from_user.first_name
+                username = message.from_user.username
+
+            if time_ < 37:
                 bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][1]
-                                 .format(message.reply_to_message.from_user.first_name), parse_mode='Markdown')
+                                 .format(user), parse_mode='Markdown')
             else:
                 bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][0]
-                                 .format(message.reply_to_message.from_user.first_name, time_), parse_mode='Markdown')
+                                 .format(user, time_), parse_mode='Markdown')
 
             logger.info("User {:s}, Username @{:s} - banned!"
-                        .format(message.from_user.first_name, (message.from_user.username or "NONE")))
+                        .format(user, (username or "NONE")))
 
 
 def roulette_game(message):
@@ -446,7 +455,7 @@ MESSAGE_TEMPLATES = [
      answer_stream],
     ['(?i)(\W|^).*?(иди сюда|ты где|ты тут|привет|кыс).*?(\W|$)', come_here_message],
     ['(?i)(\W|^).*?(тут зануда|космос|выгони).*?(\W|$)', answer_goto_space],
-    ['(?i)(\W|^).*?(мозг|живой|красав|молодец|хорош).*?(\W|$)', goodboy],
+    ['(?i)(\W|^).*?(мозг|живой|красав|молодец|хорош|умный).*?(\W|$)', goodboy],
     ['(?i)(\W|^).*?(.*?пить.*?или.*?не).*?(\W|$)', drink_question],
     ['(?i)(\W|^).*?(улитка|барабан).*?(\W|$)', roulette_game]
 ]
