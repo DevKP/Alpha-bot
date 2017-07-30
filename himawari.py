@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from PIL import Image
 import requests
 import os
 from io import BytesIO
 import threading
 from pathlib import Path
+from config import HIMAWARI_UPDATE_TIMEOUT
 
 from utils import logger
 
@@ -46,12 +46,16 @@ def delete_old_photo(maxnum):
         os.remove(''.join(['./himawaripictures_lowres/', lowres_photos[0]]))
 
 
+def schedule_update(interval):
+    threading.Timer(interval, update_image).start()
+
+
 last_update_time = datetime.now()
 
 
 def update_image():
     global last_update_time
-    threading.Timer(10 * 60, update_image).start()
+    schedule_update(HIMAWARI_UPDATE_TIMEOUT)
 
     png = Image.new('RGB', (tile_width * image_scale, tile_height * image_scale))
     time_now = datetime.utcnow() - timedelta(minutes=60)

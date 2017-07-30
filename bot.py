@@ -3,7 +3,6 @@ import logging
 import os
 import re
 import shutil
-import threading
 from pathlib import Path
 from random import randrange
 from time import sleep
@@ -510,7 +509,7 @@ def main():
     })
     bot.set_update_listener(listener)
 
-    threading.Timer(10, himawari.update_image).start()
+    himawari.schedule_update(10)
 
     logger.info("Alpha-Bot started!")
     cherrypy.quickstart(WebhookServer(), config.WEBHOOK_URL_PATH, {'/': {}})

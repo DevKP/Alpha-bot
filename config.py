@@ -24,3 +24,5 @@ allowed_users = {
 }
 
 CONCEPTS_COUNT = 3  # Количество ключевых слов
+
+HIMAWARI_UPDATE_TIMEOUT = 10 * 60
