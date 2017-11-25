@@ -4,12 +4,12 @@ START_MESSAGE = {'strings': ['Привет, {:s}! Рад тебя видеть!'
                  'stickers': None}
 
 HELLO_MESSAGE = {'strings': [
-    "Добро пожаловать!",
-    "Привет тебе!",
-    "Рад вас видеть!",
-    "Привет новенький!",
-    "Добро пожаловать в оффтоп!",
-    "Приветик!"],
+    "*Добро пожаловать!*",
+    "*Привет тебе!*",
+    "*Рад вас видеть!*",
+    "*Привет, новенький!*",
+    "*Добро пожаловать в оффтоп!*",
+    "*Приветик!*"],
     'stickers': None}
 
 GOODBYE_MESSAGE = {'strings': ["*Мне будет тебя нехватать..*"],
@@ -27,10 +27,10 @@ IM_HERE_MESSAGE = {'strings': [
     '*Привет!*'],
     'stickers': None}
 
-SPACE_DETECT_MESSAGE = {'strings': ['*Какой космос!? Накажу!*',
+SPACE_DETECT_MESSAGE = {'strings': ['*Обнаружена космическая тематика!*',
                                     '*Это похоже на космос!*'],
-                        'stickers': ['CAADAgADEQMAApFfCAABY-zGe3B9vwgC',
-                                     'CAADAgADJQMAApFfCAABx8uFnPP2m80C']}
+                        'stickers': [None,
+                                     None]}
 
 DRINK_QUESTION_MESSAGE = {'strings': [
     '*Пить!*',
@@ -56,8 +56,9 @@ SEND_MSG_MESSAGE = {'strings': ['Пришли сообщение! /cancel есл
 CANCEL_MESSAGE = {'strings': ['*Окей, не хочешь - как хочешь!*'],
                   'stickers': None}
 
-BAN_MESSAGE = {'strings': ["*Пользователь {} забанен на {}сек.*",
-                           "*Пользователь {} получает перманентный бан!*"],
+BAN_MESSAGE = {'strings': ["*Пользователь {} забанен на {} {}*",
+                           "*Пользователь {} получает перманентный бан!*",
+                           "*Пользователь {} самозабанился на {} {}!*"],
                'stickers': None}
 
 ROULETTE_MESSAGE = {'strings': ["*Пользователь {} застрелился!*",

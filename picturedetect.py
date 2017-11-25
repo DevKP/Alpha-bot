@@ -1,15 +1,19 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 import re
 from pathlib import Path
 
 import pymorphy2
+import itertools
 from clarifai.rest import ClarifaiApp
 
 import config
-from bot import file_download, logger
+from bot import file_download
+from utils import logger
 
 KEY = 'c3e552013fa64ff2a3beea5fefbb597e'
+ENKEY = 'dbd34c9715484a3abb0bc75a12f1de8f'
 app = ClarifaiApp(api_key=KEY)
+enapp = ClarifaiApp(api_key=ENKEY)
 
 BLACKLIST = {'планета', 'астрономия', 'вселенная',
              'орбита', 'космическое пространство',
@@ -19,13 +23,30 @@ BLACKLIST = {'планета', 'астрономия', 'вселенная',
              'космея', 'телескоп', 'внешний', 'Юпитер',
              'Сатурн (планета)', 'Марс'}
 
+IGNORELIST = {'нет человек'}
 
 def analise_photo(file):
     model = app.models.get('general-v1.3')
     res = model.predict_by_filename(file)
     outputs = res.get('outputs')
     for output in outputs:
-        return output.get('data').get('concepts')
+        concepts = (concept for concept in output.get('data').get('concepts') if concept['name'] not in IGNORELIST)
+        return concepts
+
+
+def nsfw_test(file, procents):
+    
+
+    model = enapp.models.get('nsfw-v1.0')
+    res = model.predict_by_filename(file)
+
+    outputs = res.get('outputs')
+    for output in outputs:
+        for concept in output.get('data').get('concepts'):
+            if concept['name'] == 'nsfw' and concept['value'] > procents:
+                return True
+
+    return False
 
 
 def check_blacklist(concepts, blacklist, logger=None):
@@ -49,7 +70,7 @@ def reply_get_concept_msg(photo_id):
     if not _file.is_file():
         file_patch = file_download(photo_id, './photos/')
 
-    concepts = analise_photo(file_patch)[:config.CONCEPTS_COUNT]
+    concepts = itertools.islice(analise_photo(file_patch), config.CONCEPTS_COUNT)
 
     message, word_sets = process_concepts(concepts)
 
@@ -60,7 +81,7 @@ def reply_get_concept_msg(photo_id):
 def process_concepts(concepts):
     words = process_words(concepts)
     word_sets = [" ".join(word_set) for word_set in words]
-    return "*Я думаю, это {}!*".format(", ".join(word_sets)), word_sets
+    return "*, я думаю, это {}!*".format(", ".join(word_sets)), word_sets
 
 
 def get_tags(word):
