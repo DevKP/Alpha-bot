@@ -136,16 +136,19 @@ def antispam(message):
 
 @bot.message_handler(commands=['rate'])
 def rate_command(message):
+    if "alphaofftopbot" not in message.text:
+        return
+
     resp = requests.get("https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD&e=Bitfinex&extraParams=Persik")
     if resp.status_code == 200:
         json_obj = json.loads(resp.content.decode("utf-8"))
         print(json_obj)
-        #bot.send_message(message.chat.id,"1 btc = {} usd".format(json_obj['USD']), parse_mode='Markdown')
+        bot.send_message(message.chat.id,"1 btc = {} usd".format(json_obj['USD']), parse_mode='Markdown')
     resp = requests.get("https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD&e=Bitfinex&extraParams=Persik")
     if resp.status_code == 200:
         json_obj = json.loads(resp.content.decode("utf-8"))
         print(json_obj)
-        #bot.send_message(message.chat.id,"1 eth = {} usd".format(json_obj['USD']), parse_mode='Markdown')
+        bot.send_message(message.chat.id,"1 eth = {} usd".format(json_obj['USD']), parse_mode='Markdown')
     resp = requests.get("https://min-api.cryptocompare.com/data/price?fsym=ZEC&tsyms=USD&e=Bitfinex&extraParams=Persik")
     if resp.status_code == 200:
         json_obj = json.loads(resp.content.decode("utf-8"))
