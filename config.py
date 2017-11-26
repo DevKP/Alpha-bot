@@ -1,6 +1,6 @@
 ﻿# -*- coding: utf-8 -*-
 
-token = 'TOKEN'
+token = 'Token'
 provider_token = '361519591:TEST:36f78445e159f9c11e7ff86bb9184e01'
 
 WEBHOOK_HOST = '176.37.39.165'

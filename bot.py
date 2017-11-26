@@ -454,9 +454,9 @@ def photo_receive(message):
     if picturedetect.nsfw_test(file_patch, 0.8):
         bot.delete_message(message.chat.id, message.message_id)
 
-        #bot.send_message(message.chat.id, "*{} уходит в бан на {} {}! Причина: NSFW*"
-                         #.format(message.from_user.first_name, 5, 'мин.'), parse_mode='Markdown')
-        #ban_user(message.chat.id, message.from_user.id, 5*60)
+        bot.send_message(message.chat.id, "*{} уходит в бан на {} {}! Причина: NSFW*"
+                         .format(message.from_user.first_name, 5, 'мин.'), parse_mode='Markdown')
+        ban_user(message.chat.id, message.from_user.id, 5*60)
 
 @bot.message_handler(regexp='(?i)(\W|^).*?!п[eеэ][pр][cс](и|ч[eеи]к).*?(\W|$)')
 def persik_keyword(message):
