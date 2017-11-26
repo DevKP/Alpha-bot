@@ -682,7 +682,11 @@ def random_joke(message):
     if resp.status_code == 200:
         utf8content = resp.content.decode("windows-1251").encode('utf-8').decode('utf-8')
         json_joke = json.loads(utf8content.replace('\r\n', '\\r\\n'))
-        bot.send_message(message.chat.id, json_joke['content'])
+        
+        message.text = json_joke['content'] + "\nАХ-ХАХАХАХХАХА! лолол!"
+        text_to_speech(message)
+
+
 
 def fourtytwo(message):
     bot.reply_to(message, "*В чем смысл жизни? 🤔*", parse_mode='Markdown')
