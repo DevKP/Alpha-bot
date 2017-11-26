@@ -684,7 +684,7 @@ def random_joke(message):
         json_joke = json.loads(utf8content.replace('\r\n', '\\r\\n'))
         
         message.text = json_joke['content'] + "\nАХ-ХАХАХАХХАХА! лолол!"
-        text_to_speech(message)
+        text_to_speech_caption(message, " - Шутка!")
 
 
 
@@ -713,6 +713,29 @@ def user_penalty_off(message):
                                  .format(message.reply_to_message.from_user.first_name), parse_mode='Markdown')
 
 
+def text_to_speech_caption(message, cap): #WTF IS THIS?? AM I STUPID?
+    try:
+        bot.delete_message(message.chat.id, message.message_id)
+    except Exception as e:
+        logger.error("(TTS) Unexpected error: {}".format(e))
+    if message.reply_to_message:
+        text = message.reply_to_message.text
+    else:
+        text = message.text[11:]
+    speech = gTTS(text, 'ru')
+
+    file_name_len = 10
+    if len(text) < 10:
+        file_name_len = len(text)
+
+    file_name = './TTS/{}.mp3'.format(text[:file_name_len])
+
+    speech.save(file_name)
+
+    with open(file_name, 'rb') as audio:
+        bot.send_voice(message.chat.id, caption=cap,voice=audio)
+
+
 def text_to_speech(message):
     try:
         bot.delete_message(message.chat.id, message.message_id)
@@ -733,7 +756,7 @@ def text_to_speech(message):
     speech.save(file_name)
 
     with open(file_name, 'rb') as audio:
-        bot.send_voice(message.chat.id, audio)
+        bot.send_voice(message.chat.id,voice=audio, parse_mode='Markdown')
 
 
 
