@@ -14,7 +14,7 @@ from datetime import datetime
 import urllib.request, json
 from uuid import uuid4
 import threading
-from operator import attrgetter
+from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 
 import cherrypy
 import requests
@@ -141,18 +141,25 @@ def rate_command(message):
         if "alphaofftopbot" not in message.text:
             return
 
+    text = ''
     resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=BTC&tsym=USD&e=Poloniex,Kraken,Coinbase,HitBTC,Bitfinex&extraParams=Persik")
     if resp.status_code == 200:
         json_obj = json.loads(resp.content.decode("utf-8"))
-        bot.send_message(message.chat.id,"1 btc = {} usd".format(json_obj['RAW']['PRICE']), parse_mode='Markdown')
+        text += "1 btc = {} usd\n".format(json_obj['RAW']['PRICE'])
     resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=ETH&tsym=USD&e=Poloniex,Kraken,Coinbase,HitBTC,Bitfinex&extraParams=Persik")
     if resp.status_code == 200:
         json_obj = json.loads(resp.content.decode("utf-8"))
-        bot.send_message(message.chat.id,"1 eth = {} usd".format(json_obj['RAW']['PRICE']), parse_mode='Markdown')
+        text += "1 eth = {} usd\n".format(json_obj['RAW']['PRICE'])
+    resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=ETC&tsym=USD&e=Poloniex,Kraken,HitBTC,Bitfinex&extraParams=Persik")
+    if resp.status_code == 200:
+        json_obj = json.loads(resp.content.decode("utf-8"))
+        text += "1 etc = {} usd\n".format(json_obj['RAW']['PRICE'])
     resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=ZEC&tsym=USD&e=Poloniex,Kraken,HitBTC,Bitfinex&extraParams=Persik")
     if resp.status_code == 200:
         json_obj = json.loads(resp.content.decode("utf-8"))
-        bot.send_message(message.chat.id,"1 zec = {} usd".format(json_obj['RAW']['PRICE']), parse_mode='Markdown')
+        text += "1 zec = {} usd".format(json_obj['RAW']['PRICE'])
+
+    bot.send_message(message.chat.id, text, parse_mode='Markdown')
 
         
 @bot.message_handler(commands=['exch'])
@@ -426,6 +433,10 @@ def replace_substr(str, start, sub):
 
 @bot.message_handler(commands=['whattomine'])
 def whattomine_command(m):
+    image = Image.new("RGBA", (320,630), (255,255,255, 255))
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.truetype('arial', 12)
+
     url = 'https://whattomine.com/coins.json?utf8=%E2%9C%93&adapt_q_280x=0&adapt_q_380=0&adapt_q_fury=0&adapt_q_470=0&adapt_q_480=3&adapt_q_570=0&adapt_q_580=0&adapt_q_750Ti=0&adapt_q_1050Ti=0&adapt_q_10606=1&adapt_q_1070=0&adapt_q_1080=0&adapt_q_1080Ti=0&eth=true&factor%5Beth_hr%5D=23&factor%5Beth_p%5D=90.0&grof=true&factor%5Bgro_hr%5D=20.5&factor%5Bgro_p%5D=90.0&x11gf=true&factor%5Bx11g_hr%5D=7.2&factor%5Bx11g_p%5D=90.0&cn=true&factor%5Bcn_hr%5D=510&factor%5Bcn_p%5D=70.0&eq=true&factor%5Beq_hr%5D=320&factor%5Beq_p%5D=90.0&lre=true&factor%5Blrev2_hr%5D=25000&factor%5Blrev2_p%5D=90.0&ns=true&factor%5Bns_hr%5D=500.0&factor%5Bns_p%5D=90.0&lbry=true&factor%5Blbry_hr%5D=170.0&factor%5Blbry_p%5D=90.0&bk2bf=true&factor%5Bbk2b_hr%5D=990.0&factor%5Bbk2b_p%5D=80.0&bk14=true&factor%5Bbk14_hr%5D=1550.0&factor%5Bbk14_p%5D=90.0&pas=true&factor%5Bpas_hr%5D=580.0&factor%5Bpas_p%5D=90.0&skh=true&factor%5Bskh_hr%5D=18.0&factor%5Bskh_p%5D=90.0&factor%5Bl2z_hr%5D=420.0&factor%5Bl2z_p%5D=300.0&factor%5Bcost%5D=0.0&sort=Profitability24&volume=0&revenue=24h&factor%5Bexchanges%5D%5B%5D=&factor%5Bexchanges%5D%5B%5D=abucoins&factor%5Bexchanges%5D%5B%5D=bitfinex&factor%5Bexchanges%5D%5B%5D=bittrex&factor%5Bexchanges%5D%5B%5D=bleutrade&factor%5Bexchanges%5D%5B%5D=cryptopia&factor%5Bexchanges%5D%5B%5D=hitbtc&factor%5Bexchanges%5D%5B%5D=poloniex&factor%5Bexchanges%5D%5B%5D=yobit&commit=Calculate'
     resp = requests.get(url)
     if resp.status_code == 200:
@@ -433,28 +444,41 @@ def whattomine_command(m):
 
         json_obj['coins'] = sorted(json_obj['coins'].items(), key=extract_revenue, reverse=True)
 
+        offset = 40
+        line_offset = 14
+        left_offset = 10
+        vert_offset = 30
+
         btc_price = 0
         btc_resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=BTC&tsym=USD&e=Poloniex,Kraken,Coinbase,HitBTC,Bitfinex&extraParams=Persik")
         if btc_resp.status_code == 200:
             btc_obj = json.loads(btc_resp.content.decode("utf-8"))
             btc_price = float(btc_obj['RAW']['PRICE'])
 
-        text = '<b>Name(Tag)                    Rewards 24h             Rev. $</b>\n'
+            draw.text((15,8), "Name", font=ImageFont.truetype('arialbd', 12), fill='black')
+            draw.text((145,8), "Rewards 24h", font=ImageFont.truetype('arialbd', 12), fill='black')
+            draw.text((246,8), "Rev. $", font=ImageFont.truetype('arialbd', 12), fill='black')
+            draw.line([(0, vert_offset-1),(320, vert_offset-1)], fill=(210, 214, 213))
 
-        for i in range(15):
-            line =''.join(' ' for _ in range(100)) + '\n'
+            for i in range(15):
+                line =''.join(' ' for _ in range(100)) + '\n'
 
-            tag = json_obj['coins'][i][0]
-            line = replace_substr(line, 0 ,tag) 
+                vert_y_line = vert_offset + offset * i
+                vert_y_text = vert_offset + line_offset +  (offset * i)
 
-            profit = float(json_obj['coins'][i][1]['btc_revenue24']) * btc_price
-            revardcoin = float(json_obj['coins'][i][1]['estimated_rewards24'])
-            line = replace_substr(line, 20 ,"{rev24:.5f}".format(rev24=revardcoin))
-            line = replace_substr(line, 35 ,"{rev:.2f}$".format(rev=profit))
+                draw.line([(0, vert_y_line),(320, vert_y_line)],fill=(210, 214, 213))
 
-            text += "<code>" + line + "</code>"
+                tag = json_obj['coins'][i][0]
+                draw.text((left_offset, vert_y_text), tag, font=font, fill='black')
 
-        bot.send_message(m.chat.id, text, parse_mode='HTML')
+                profit = float(json_obj['coins'][i][1]['btc_revenue24']) * btc_price
+                revardcoin = float(json_obj['coins'][i][1]['estimated_rewards24'])
+                draw.text((160,vert_y_text), "{rev24:.5f}".format(rev24=revardcoin), font=font, fill='black')
+                draw.text((250,vert_y_text), "{rev:.2f}$".format(rev=profit), font=font, fill='black')
+
+        image.save('./tmp_whattomine.png', 'PNG')
+        with open('./tmp_whattomine.png', 'rb') as photo:
+            bot.send_photo(m.chat.id, photo)
 
 
 @bot.message_handler(content_types=["photo"])
@@ -728,7 +752,7 @@ def random_joke(message):
         json_joke = json.loads(utf8content.replace('\r\n', '\\r\\n'))
         
         message.text = json_joke['content'] + "\nАХ-ХАХАХАХХАХА! лолол!"
-        text_to_speech_caption(message, " - Шутка!")
+        text_to_speech_caption(message, json_joke['content'])
 
 
 
@@ -762,10 +786,7 @@ def text_to_speech_caption(message, cap): #WTF IS THIS?? AM I STUPID?
         bot.delete_message(message.chat.id, message.message_id)
     except Exception as e:
         logger.error("(TTS) Unexpected error: {}".format(e))
-    if message.reply_to_message:
-        text = message.reply_to_message.text
-    else:
-        text = message.text[11:]
+    text = message.text
     speech = gTTS(text, 'ru')
 
     file_name_len = 10
