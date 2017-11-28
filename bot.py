@@ -14,6 +14,7 @@ from datetime import datetime
 import urllib.request, json
 from uuid import uuid4
 import threading
+from operator import attrgetter
 
 import cherrypy
 import requests
@@ -413,6 +414,49 @@ def get_user_id_message(message):
                      reply_markup=keyboard)
 
 
+def extract_revenue(D):
+    try:
+        return float(D[1]['btc_revenue24'])
+    except KeyError:
+        return 0
+
+def replace_substr(str, start, sub):
+    size = len(sub)
+    return str[:start] + sub + str[start + size:]
+
+@bot.message_handler(commands=['whattomine'])
+def whattomine_command(m):
+    url = 'https://whattomine.com/coins.json?utf8=%E2%9C%93&adapt_q_280x=0&adapt_q_380=0&adapt_q_fury=0&adapt_q_470=0&adapt_q_480=3&adapt_q_570=0&adapt_q_580=0&adapt_q_750Ti=0&adapt_q_1050Ti=0&adapt_q_10606=1&adapt_q_1070=0&adapt_q_1080=0&adapt_q_1080Ti=0&eth=true&factor%5Beth_hr%5D=23&factor%5Beth_p%5D=90.0&grof=true&factor%5Bgro_hr%5D=20.5&factor%5Bgro_p%5D=90.0&x11gf=true&factor%5Bx11g_hr%5D=7.2&factor%5Bx11g_p%5D=90.0&cn=true&factor%5Bcn_hr%5D=510&factor%5Bcn_p%5D=70.0&eq=true&factor%5Beq_hr%5D=320&factor%5Beq_p%5D=90.0&lre=true&factor%5Blrev2_hr%5D=25000&factor%5Blrev2_p%5D=90.0&ns=true&factor%5Bns_hr%5D=500.0&factor%5Bns_p%5D=90.0&lbry=true&factor%5Blbry_hr%5D=170.0&factor%5Blbry_p%5D=90.0&bk2bf=true&factor%5Bbk2b_hr%5D=990.0&factor%5Bbk2b_p%5D=80.0&bk14=true&factor%5Bbk14_hr%5D=1550.0&factor%5Bbk14_p%5D=90.0&pas=true&factor%5Bpas_hr%5D=580.0&factor%5Bpas_p%5D=90.0&skh=true&factor%5Bskh_hr%5D=18.0&factor%5Bskh_p%5D=90.0&factor%5Bl2z_hr%5D=420.0&factor%5Bl2z_p%5D=300.0&factor%5Bcost%5D=0.0&sort=Profitability24&volume=0&revenue=24h&factor%5Bexchanges%5D%5B%5D=&factor%5Bexchanges%5D%5B%5D=abucoins&factor%5Bexchanges%5D%5B%5D=bitfinex&factor%5Bexchanges%5D%5B%5D=bittrex&factor%5Bexchanges%5D%5B%5D=bleutrade&factor%5Bexchanges%5D%5B%5D=cryptopia&factor%5Bexchanges%5D%5B%5D=hitbtc&factor%5Bexchanges%5D%5B%5D=poloniex&factor%5Bexchanges%5D%5B%5D=yobit&commit=Calculate'
+    resp = requests.get(url)
+    if resp.status_code == 200:
+        json_obj = json.loads(resp.content.decode("utf-8"))
+
+        json_obj['coins'] = sorted(json_obj['coins'].items(), key=extract_revenue, reverse=True)
+
+        btc_price = 0
+        btc_resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=BTC&tsym=USD&e=Poloniex,Kraken,Coinbase,HitBTC,Bitfinex&extraParams=Persik")
+        if btc_resp.status_code == 200:
+            btc_obj = json.loads(btc_resp.content.decode("utf-8"))
+            btc_price = float(btc_obj['RAW']['PRICE'])
+
+        text = '<b>Name(Tag)                    Rewards 24h             Rev. $</b>\n'
+
+        for i in range(15):
+            line =''.join(' ' for _ in range(100)) + '\n'
+
+            tag = json_obj['coins'][i][0]
+            line = replace_substr(line, 0 ,tag) 
+
+            profit = float(json_obj['coins'][i][1]['btc_revenue24']) * btc_price
+            revardcoin = float(json_obj['coins'][i][1]['estimated_rewards24'])
+            line = replace_substr(line, 20 ,"{rev24:.5f}".format(rev24=revardcoin))
+            line = replace_substr(line, 35 ,"{rev:.2f}$".format(rev=profit))
+
+            text += "<code>" + line + "</code>"
+
+        bot.send_message(m.chat.id, text, parse_mode='HTML')
+
+
 @bot.message_handler(content_types=["photo"])
 def photo_receive(message):
     file_id = message.photo[len(message.photo) - 1].file_id
@@ -756,7 +800,7 @@ def text_to_speech(message):
     speech.save(file_name)
 
     with open(file_name, 'rb') as audio:
-        bot.send_voice(message.chat.id,voice=audio, parse_mode='Markdown')
+        bot.send_voice(message.chat.id,voice=audio)
 
 
 
