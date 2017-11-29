@@ -100,6 +100,7 @@
     <Content Include="ffmpeg\licenses\zimg.txt" />
     <Content Include="ffmpeg\licenses\zlib.txt" />
     <Content Include="ffmpeg\README.txt" />
+    <Content Include="requirements.txt" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="ffmpeg" />
