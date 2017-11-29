@@ -14,7 +14,7 @@ from datetime import datetime
 import urllib.request, json
 from uuid import uuid4
 import threading
-from PIL import Image, ImageFont, ImageDraw, ImageEnhance
+from PIL import Image, ImageFont, ImageDraw, ImageEnhance, ImageFilter
 
 import cherrypy
 import requests
@@ -407,17 +407,17 @@ def get_document_message(message):
     bot.send_document(message.chat.id, message.text[13:], message.message_id)
 
 
-@bot.message_handler(commands=['donate__'])
+@bot.message_handler(commands=['tst'])
 def get_user_id_message(message):
     logger.info("/donate command by {:s}, Username @{:s}"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     print(message)
     keyboard = types.InlineKeyboardMarkup()
     url_button = types.InlineKeyboardButton(
-        text="Пожертвовать", url="https://igg.me/at/js5j75OG0DQ")
+        text="tst", url="http://176.37.39.165/payment1.html?PUID=")
     keyboard.add(url_button)
     bot.send_message(message.chat.id,
-                     'Граждане трудящиеся, попрошу внести по рублю в кассу на развитие отечественного персика!',
+                     'tst',
                      reply_markup=keyboard)
 
 
@@ -427,15 +427,37 @@ def extract_revenue(D):
     except KeyError:
         return 0
 
-def replace_substr(str, start, sub):
-    size = len(sub)
-    return str[:start] + sub + str[start + size:]
+def makeShadow(image, iterations, border, offset, backgroundColour, shadowColour):
+
+    fullWidth  = image.size[0] + abs(offset[0]) + 2*border
+    fullHeight = image.size[1] + abs(offset[1]) + 2*border
+    
+    shadow = Image.new(image.mode, (fullWidth, fullHeight), backgroundColour)
+    
+    shadowLeft = border + max(offset[0], 0)
+    shadowTop  = border + max(offset[1], 0)
+
+    shadow.paste(shadowColour, 
+                [shadowLeft, shadowTop,
+                 shadowLeft + image.size[0],
+                 shadowTop  + image.size[1] ])
+    
+    for i in range(iterations):
+        shadow = shadow.filter(ImageFilter.BLUR)
+
+    imgLeft = border - min(offset[0], 0)
+    imgTop  = border - min(offset[1], 0)
+    shadow.paste(image, (imgLeft, imgTop))
+
+    return shadow
 
 @bot.message_handler(commands=['whattomine'])
 def whattomine_command(m):
-    image = Image.new("RGBA", (320,630), (255,255,255, 255))
+    image = Image.new("RGBA", (640,1260), (255,255,255, 255))
     draw = ImageDraw.Draw(image)
-    font = ImageFont.truetype('arial', 12)
+    font = ImageFont.truetype('arial', 24)
+
+    pop_curr = {"ZEC", "ETH", "ETC"}
 
     url = 'https://whattomine.com/coins.json?utf8=%E2%9C%93&adapt_q_280x=0&adapt_q_380=0&adapt_q_fury=0&adapt_q_470=0&adapt_q_480=3&adapt_q_570=0&adapt_q_580=0&adapt_q_750Ti=0&adapt_q_1050Ti=0&adapt_q_10606=1&adapt_q_1070=0&adapt_q_1080=0&adapt_q_1080Ti=0&eth=true&factor%5Beth_hr%5D=23&factor%5Beth_p%5D=90.0&grof=true&factor%5Bgro_hr%5D=20.5&factor%5Bgro_p%5D=90.0&x11gf=true&factor%5Bx11g_hr%5D=7.2&factor%5Bx11g_p%5D=90.0&cn=true&factor%5Bcn_hr%5D=510&factor%5Bcn_p%5D=70.0&eq=true&factor%5Beq_hr%5D=320&factor%5Beq_p%5D=90.0&lre=true&factor%5Blrev2_hr%5D=25000&factor%5Blrev2_p%5D=90.0&ns=true&factor%5Bns_hr%5D=500.0&factor%5Bns_p%5D=90.0&lbry=true&factor%5Blbry_hr%5D=170.0&factor%5Blbry_p%5D=90.0&bk2bf=true&factor%5Bbk2b_hr%5D=990.0&factor%5Bbk2b_p%5D=80.0&bk14=true&factor%5Bbk14_hr%5D=1550.0&factor%5Bbk14_p%5D=90.0&pas=true&factor%5Bpas_hr%5D=580.0&factor%5Bpas_p%5D=90.0&skh=true&factor%5Bskh_hr%5D=18.0&factor%5Bskh_p%5D=90.0&factor%5Bl2z_hr%5D=420.0&factor%5Bl2z_p%5D=300.0&factor%5Bcost%5D=0.0&sort=Profitability24&volume=0&revenue=24h&factor%5Bexchanges%5D%5B%5D=&factor%5Bexchanges%5D%5B%5D=abucoins&factor%5Bexchanges%5D%5B%5D=bitfinex&factor%5Bexchanges%5D%5B%5D=bittrex&factor%5Bexchanges%5D%5B%5D=bleutrade&factor%5Bexchanges%5D%5B%5D=cryptopia&factor%5Bexchanges%5D%5B%5D=hitbtc&factor%5Bexchanges%5D%5B%5D=poloniex&factor%5Bexchanges%5D%5B%5D=yobit&commit=Calculate'
     resp = requests.get(url)
@@ -444,10 +466,14 @@ def whattomine_command(m):
 
         json_obj['coins'] = sorted(json_obj['coins'].items(), key=extract_revenue, reverse=True)
 
-        offset = 40
-        line_offset = 14
-        left_offset = 10
-        vert_offset = 30
+        offset = 80
+
+        upper_offset = 14
+        centre_offset = 28
+        lower_offset = 42
+
+        left_offset = 20
+        vert_offset = 60
 
         btc_price = 0
         btc_resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=BTC&tsym=USD&e=Poloniex,Kraken,Coinbase,HitBTC,Bitfinex&extraParams=Persik")
@@ -455,26 +481,39 @@ def whattomine_command(m):
             btc_obj = json.loads(btc_resp.content.decode("utf-8"))
             btc_price = float(btc_obj['RAW']['PRICE'])
 
-            draw.text((15,8), "Name", font=ImageFont.truetype('arialbd', 12), fill='black')
-            draw.text((145,8), "Rewards 24h", font=ImageFont.truetype('arialbd', 12), fill='black')
-            draw.text((246,8), "Rev. $", font=ImageFont.truetype('arialbd', 12), fill='black')
-            draw.line([(0, vert_offset-1),(320, vert_offset-1)], fill=(210, 214, 213))
+            topcard = Image.new("RGBA",(650, vert_offset),(38, 193, 255, 255))
+            topcard = makeShadow(topcard, 10, 14, (0,1), (255,255,255),(80,80,80))
+
+            image.paste(topcard, (-20,-15))
+            draw.text((30,16), "Name(Tag)", font=ImageFont.truetype('arialbd', 24), fill='black')
+            draw.text((290,16), "Rewards 24h", font=ImageFont.truetype('arialbd', 24), fill='black')
+            draw.text((492,16), "Rev. $", font=ImageFont.truetype('arialbd', 24), fill='black')
 
             for i in range(15):
-                line =''.join(' ' for _ in range(100)) + '\n'
-
                 vert_y_line = vert_offset + offset * i
-                vert_y_text = vert_offset + line_offset +  (offset * i)
+                vert_y_text = vert_offset + (offset * i)
 
-                draw.line([(0, vert_y_line),(320, vert_y_line)],fill=(210, 214, 213))
+                if i != 0:
+                    draw.line([(0, vert_y_line),(640, vert_y_line)],fill=(210, 214, 213)) 
 
-                tag = json_obj['coins'][i][0]
-                draw.text((left_offset, vert_y_text), tag, font=font, fill='black')
+                name = json_obj['coins'][i][0]
+                algo = json_obj['coins'][i][1]["algorithm"]
+
+                tag = json_obj['coins'][i][1].get('tag')
+                if tag != "NICEHASH":
+                    name += "({})".format(tag)
+
+                draw.text((left_offset, vert_y_text + upper_offset), name, font=font, fill='black')
+                draw.text((left_offset-1, vert_y_text + lower_offset), algo, font=font, fill=(140,140,140))
+
+                intersec = {tag} & pop_curr
+                if len(intersec) != 0:
+                    draw.rectangle([(0, vert_y_text+1),(10, vert_y_text + offset - 1)], fill=(39, 186, 77))
 
                 profit = float(json_obj['coins'][i][1]['btc_revenue24']) * btc_price
                 revardcoin = float(json_obj['coins'][i][1]['estimated_rewards24'])
-                draw.text((160,vert_y_text), "{rev24:.5f}".format(rev24=revardcoin), font=font, fill='black')
-                draw.text((250,vert_y_text), "{rev:.2f}$".format(rev=profit), font=font, fill='black')
+                draw.text((320,vert_y_text + centre_offset), "{rev24:.5f}".format(rev24=revardcoin), font=font, fill='black')
+                draw.text((500,vert_y_text + centre_offset), "{rev:.2f}$".format(rev=profit), font=font, fill='black')
 
         image.save('./tmp_whattomine.png', 'PNG')
         with open('./tmp_whattomine.png', 'rb') as photo:
@@ -827,34 +866,23 @@ def text_to_speech(message):
 
 
 def donate_generate(message):
-    amount_str = re.search('[0-9]{1,15}', message.text)
-    if amount_str:
-        amount = int(amount_str.group(0))
-    else:
-        return
-
     payment_id = uuid4()
     payments.waiting_payments.setdefault(str(payment_id), message.from_user)
+    payments.generated_payments.setdefault(str(message.from_user.id), str(payment_id))
 
     print(payment_id)
 
-    postdata={'WMI_SUCCESS_URL':'https://walletone.com',
-              'WMI_FAIL_URL':'https://walletone.com',
-              'WMI_MERCHANT_ID':'147906908884',
-              'WMI_PAYMENT_AMOUNT': amount,
-              'WMI_CURRENCY_ID':'980',
-              'WMI_DESCRIPTION':'Кисе на лечение. *-*'}
-    resp = requests.post("http://wl.walletone.com/checkout/checkout/Index", data=postdata)
-
-    if "&m=147906908884" not in resp.request.url:
-        bot.send_message(message.chat.id, " \nПроизошла ошибка при создании счета! D:\n ", parse_mode='Markdown')
-        return
+    url = 'http://alphaofftop.tk/payment1.html?TUID={}'.format(message.from_user.id)
 
     keyboard = types.InlineKeyboardMarkup()
-    button = types.InlineKeyboardButton("Задонатить 🍩", url=resp.request.url)
+    button = types.InlineKeyboardButton("tst 🍩", url=url,callback_data='donate')
     keyboard.add(button)
 
-    bot.send_message(message.chat.id, " \nСчет на сумму *{} UAH* успешно создан :D\n ".format(amount), reply_markup=keyboard, parse_mode='Markdown')
+    bot.send_message(message.chat.id, "tst", reply_markup=keyboard, parse_mode='Markdown')
+
+@bot.callback_query_handler(func=lambda call: call.data == 'donate')
+def donate_btn(call):
+    bot.delete_message(call.message.chat.id, call.message.message_id)
 
 
 MESSAGE_TEMPLATES = [
