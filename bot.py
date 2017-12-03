@@ -15,6 +15,7 @@ import urllib.request, json
 from uuid import uuid4
 import threading
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance, ImageFilter
+import xml.etree.ElementTree as etree 
 
 import cherrypy
 import requests
@@ -95,7 +96,7 @@ def listener(messages):
                     random_number = randrange(0, len(ru_strings.HELLO_MESSAGE["strings"]), 1)
                     bot.reply_to(msg, ru_strings.HELLO_MESSAGE["strings"][random_number] + '\n*Оставь пердак свой всяк сюда входящий, ибо сгорит!*', reply_markup=keyboard, parse_mode='Markdown')
             else:
-                antispam(msg)
+                #antispam(msg)
                 if msg.text is not None:
                     logger.info("[CHAT] {}: {}".format(msg.from_user.first_name, msg.text))
     except Exception as e:
@@ -141,6 +142,11 @@ def rate_command(message):
         if "alphaofftopbot" not in message.text:
             return
 
+    msg_to_update = bot.send_message(message.chat.id, "*loading..*", parse_mode='Markdown')
+    update_crypto_rate(msg_to_update)
+
+
+def update_crypto_rate(message):
     text = ''
     resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=BTC&tsym=USD&e=Poloniex,Kraken,Coinbase,HitBTC,Bitfinex&extraParams=Persik")
     if resp.status_code == 200:
@@ -157,25 +163,53 @@ def rate_command(message):
     resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=ZEC&tsym=USD&e=Poloniex,Kraken,HitBTC,Bitfinex&extraParams=Persik")
     if resp.status_code == 200:
         json_obj = json.loads(resp.content.decode("utf-8"))
-        text += "1 zec = {} usd".format(json_obj['RAW']['PRICE'])
+        text += "1 zec = {} usd\n\n".format(json_obj['RAW']['PRICE'])
 
-    bot.send_message(message.chat.id, text, parse_mode='Markdown')
+    text += datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S")
+
+    keyboard = types.InlineKeyboardMarkup()
+    button = types.InlineKeyboardButton("Update",callback_data='update')
+    keyboard.add(button)
+
+    bot.edit_message_text(text,message.chat.id, message.message_id, reply_markup=keyboard)
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'update')
+def donate_btn(call):
+    update_crypto_rate(call.message)
 
         
 @bot.message_handler(commands=['exch'])
 def exch_command(message):
-    resp = requests.get("https://openexchangerates.org/api/latest.json?app_id=d4b0b34863a6422bb5ca14e12c67fdca")
+    resp = requests.get("http://cbr.ru/scripts/XML_daily.asp", stream=True)
+    if resp.status_code == 200:
+         root = etree.fromstring(resp.content.decode("windows-1251").encode('utf-8').decode('utf-8'))
+
+         exch = ''
+         for valute in root.findall('Valute'):
+             if valute.get('ID') == 'R01235':
+                 exch = valute.find('Value').text
+                 break
+         bot.send_message(message.chat.id,"1 USD = {} RUB".format(exch), parse_mode='Markdown')
+
+    resp = requests.get("http://www.nbrb.by/API/ExRates/Rates/USD?ParamMode=2")
     if resp.status_code == 200:
         json_obj = json.loads(resp.content.decode("utf-8"))
-        print(json_obj)
-        bot.send_message(message.chat.id,"1 USD = {} RUB".format(json_obj['rates']['RUB']), parse_mode='Markdown')
-        bot.send_message(message.chat.id,"1 USD = {} BYN".format(json_obj['rates']['BYN']), parse_mode='Markdown')
-        bot.send_message(message.chat.id,"1 USD = {} UAH".format(json_obj['rates']['UAH']), parse_mode='Markdown')
+        bot.send_message(message.chat.id,"1 USD = {} BYN".format(json_obj['Cur_OfficialRate']), parse_mode='Markdown')
+    resp = requests.get("https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json")
+    if resp.status_code == 200:
+        json_obj = json.loads(resp.content.decode("utf-8"))
+        exch = ''
+        for curr in json_obj:
+            if curr['cc'] == 'USD':
+                exch = curr['rate']
+                break
+        bot.send_message(message.chat.id,"1 USD = {} UAH".format(exch), parse_mode='Markdown')
 
 
 @bot.message_handler(commands=['exec'])#its mistake dont do it
 def eval_command(message):
-    if all(message.from_user.id != user for user in config.allowed_users):
+    if all(message.from_user.id != user for user in config.exec_allowed_users):
            return
     with StringIO() as buf:
         sys.stdout = buf
@@ -193,10 +227,17 @@ def eval_command(message):
 def test_command(message):
     keyboard = types.InlineKeyboardMarkup()
     url_button = types.InlineKeyboardButton(
-        text="Прочесть Правила", url="http://telegram.me/alphaofftopbot")
+        text="ДА! НА ЭТУ!",callback_data='dntpush')
     keyboard.add(url_button)
-    bot.send_message(message.chat.id, ru_strings.HELLO_MESSAGE["strings"][0], reply_markup=keyboard)
+    bot.send_message(message.chat.id, "*НЕ ЖМИ НА КНОПКУ!!*", reply_markup=keyboard, parse_mode='Markdown')
 
+
+@bot.callback_query_handler(func=lambda call: call.data == 'dntpush')
+def donate_btn(call):
+    bot.delete_message(call.message.chat.id, call.message.message_id)
+    bot.set_chat_title(call.message.chat.id, "{}, НУ ЗАЧЕМ, Я ЖЕ ПРОСИЛ!!!".format(call.from_user.first_name.upper()))
+    sleep(60)
+    bot.set_chat_title(call.message.chat.id, "Чат Alpha Centauri | Оффтоп")
 
 @bot.message_handler(commands=['footfetishfreyja'])
 def test_command(message):
@@ -556,7 +597,7 @@ def photo_receive(message):
     else:
         logger.info("SPACE NOT FOUND! | ID {:s}".format(file_id))
 
-    if picturedetect.nsfw_test(file_patch, 0.8):
+    if picturedetect.nsfw_test(file_patch, 0.7):
         bot.delete_message(message.chat.id, message.message_id)
 
         bot.send_message(message.chat.id, "*{} уходит в бан на {} {}! Причина: NSFW*"
@@ -695,6 +736,8 @@ def ban_user_command(message):
         ban_message_num = 2
     else:
         user_to_ban = message.reply_to_message.from_user
+        if message.from_user.id == message.reply_to_message.from_user.id:
+            ban_message_num = 2
 
     try:
         ban_user('-1001125742098', user_to_ban.id, time)
@@ -867,7 +910,7 @@ def text_to_speech(message):
 
 def donate_generate(message):
     payment_id = uuid4()
-    payments.waiting_payments.setdefault(str(payment_id), message.from_user)
+    payments.waiting_payments.setdefault(str(payment_id), message)
     payments.generated_payments.setdefault(str(message.from_user.id), str(payment_id))
 
     print(payment_id)
@@ -875,14 +918,12 @@ def donate_generate(message):
     url = 'http://alphaofftop.tk/payment1.html?TUID={}'.format(message.from_user.id)
 
     keyboard = types.InlineKeyboardMarkup()
-    button = types.InlineKeyboardButton("tst 🍩", url=url,callback_data='donate')
+    button = types.InlineKeyboardButton("Задонатить 🍩", url=url,callback_data='donate')
     keyboard.add(button)
 
-    bot.send_message(message.chat.id, "tst", reply_markup=keyboard, parse_mode='Markdown')
+    bot.send_message(message.chat.id, "Точно рабочий донат, атвечаю.", reply_markup=keyboard, parse_mode='Markdown')
 
-@bot.callback_query_handler(func=lambda call: call.data == 'donate')
-def donate_btn(call):
-    bot.delete_message(call.message.chat.id, call.message.message_id)
+
 
 
 MESSAGE_TEMPLATES = [

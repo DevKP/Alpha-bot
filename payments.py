@@ -28,10 +28,13 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
         tuid = qs.get('TUID')
         if tuid:
             paymentid = generated_payments.get(tuid[0])
+            if not paymentid:
+                self.wfile.write(b"<html><head><title>Donate</title></head><body>Error</body></html>")
+                return       
+
             with open('./payment_page{}'.format(path), 'rb') as page:
                 page_content = bytes(page.read().decode('utf-8').format(successURL=quote_plus("http://alphaofftop.tk/payment1.html?PUID=" + paymentid)), "utf-8") 
                 self.wfile.write(page_content)
-            generated_payments.pop(tuid[0])
             return
 
         with open('./payment_page{}'.format(path), 'rb') as page:
@@ -39,11 +42,12 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
 
         puid = qs.get('PUID')
         if puid:
-            user = waiting_payments.get(puid[0])
-            if user:
-                bot.send_message('-1001125742098', "*Большое спасибо {} {}(@{})!*".format(user.first_name,user.last_name,user.username), parse_mode='Markdown')
+            message = waiting_payments.get(puid[0])
+            if message:
+                bot.send_message('-1001125742098', "*Большое спасибо {} {}(@{})!*".format(message.from_user.first_name,message.from_user.last_name,message.from_user.username), parse_mode='Markdown')
                 print(user)
                 waiting_payments.pop(puid[0])
+                generated_payments.pop(str(message.from_user.id))
 
 def run():
   server_address = ('176.37.39.165', 80)

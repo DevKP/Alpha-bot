@@ -50,7 +50,7 @@ def nsfw_test(file, procents):
 
 
 def check_blacklist(concepts, blacklist, logger=None):
-    intersection = {concept['name'] for concept in concepts} & blacklist
+    intersection = {concept['name'] for concept in list(concepts)[:3]} & blacklist
     if len(intersection) != 0:
         if logger:
             logger.info("Triggered by %s " % intersection)
