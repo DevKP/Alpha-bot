@@ -25,18 +25,16 @@ import nextstream
 import picturedetect
 import ru_strings
 import birthdays
+import utils
 from utils import logger
+from utils import bot
 
 from wit import Wit
-import subprocess
 
 from gtts import gTTS
 
 
 client = Wit(config.WIT_token)
-
-telebot.logger.setLevel(logging.INFO)
-bot = telebot.TeleBot(config.token)
 
 chatusers = 0
 with TelegramClient("Session", config.api_id, config.api_hash) as Tclient:
@@ -317,7 +315,6 @@ def exch_command(message):
 #    bot.answer_callback_query(call.id, "Тест Тест\n\nПеренос строки\nЭмоджики 🤯👍🙄👀👄🖖🏽🖐🦷👄", show_alert=True)
 
 
-
 @bot.message_handler(content_types=['sticker'])
 def sticker_message(msg):
     if any(msg.sticker.file_id == sticker_ID for sticker_ID in config.stickers_black_list):
@@ -331,27 +328,16 @@ def sticker_message(msg):
 
 @bot.message_handler(content_types=['document'])
 def document_message(msg):
-    logger.info("{:s}: [DOCUMENT] {:s}".format(msg.from_user.first_name, msg.sticker.file_id))
+    logger.info("{:s}: [DOCUMENT] {:s}".format(msg.from_user.first_name,
+                                               msg.sticker.file_id))
 
     try:
         os.makedirs("./documents")
     except FileExistsError:
         pass
 
-    file_download(msg.document.file_id, './documents/')
-
-
-def convert_oga_to_mp3(in_filename=None):
-    command = [
-        r'.\ffmpeg\bin\ffmpeg.exe',
-        '-y',
-        '-i', in_filename,
-        '-acodec', 'libmp3lame',
-        '{}.mp3'.format(in_filename)
-    ]
-
-    proc = subprocess.Popen(command)
-    proc.wait()
+    file_info = bot.get_file(msg.document.file_id)
+    utils.file_download(file_info, './documents/')
 
 
 @bot.message_handler(content_types=['left_chat_member'])
@@ -379,48 +365,6 @@ def info_command(message):
 
         if len(message_text) > 1:
             bot.send_message(message.chat.id, message_text, parse_mode='Markdown')
-
-
-def file_download(file_id, path, attempts=3):
-    '''
-    Downloads file to path
-    Returns : file path
-
-    Parameters
-    ----------
-    file_id : str
-        File ID
-    path : str
-        Save path
-    attempts : int
-        Amount of tries (default 3)
-    '''
-
-    file_info = bot.get_file(file_id)
-    _, file_extension = os.path.splitext(file_info.file_path)
-    filename = file_id
-
-    for i in range(attempts):
-        file = requests.get('https://api.telegram.org/file/bot{}/{}'.format(config.token, file_info.file_path),
-                            stream=True)
-        if file.status_code == 200:
-            file_patch = "".join([path, filename, file_extension])
-            try:
-                with open(file_patch, 'bw+') as f:
-                    file.raw.decode_content = True
-                    shutil.copyfileobj(file.raw, f)
-            except Exception as e:
-                logger.error("[Write to file] Unexpected error: {}".format(e))
-                return None
-
-            return file_patch
-        else:
-            logger.error("(Attempt #{}) File download error! Status Code: {}".format(
-                i, file.status_code))
-
-            sleep(3)
-
-    return None
 
 
 @bot.message_handler(commands=['start'])
@@ -492,7 +436,8 @@ def send_message(message):
             pass
 
         file_id = message.photo[len(message.photo) - 1].file_id
-        file_patch = file_download(file_id, './photos/')
+        file_info = bot.get_file(file_id)
+        file_patch = utils.file_download(file_info, './photos/')
         with open(file_patch, 'rb') as photo:
             bot.send_photo(config.send_chat_id, photo)
 
@@ -786,7 +731,8 @@ def photo_receive(message):
     file_patch = './photos/{:s}.jpg'.format(file_id)
     _file = Path(file_patch)
     if _file.is_file() is not True:
-        file_patch = file_download(file_id, './photos/')
+        file_info = bot.get_file(file_id)
+        file_patch = utils.file_download(file_info, './photos/')
 
     if file_patch is None:
         logger.error("File download error!'")

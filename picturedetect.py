@@ -7,7 +7,7 @@ import itertools
 from clarifai.rest import ClarifaiApp
 
 import config
-from bot import file_download
+import utils
 from utils import logger
 
 KEY = 'c3e552013fa64ff2a3beea5fefbb597e'
@@ -68,7 +68,8 @@ def reply_get_concept_msg(photo_id):
     file_patch = './photos/{:s}.jpg'.format(photo_id)
     _file = Path(file_patch)
     if not _file.is_file():
-        file_patch = file_download(photo_id, './photos/')
+        file_info = utils.bot.get_file(photo_id)
+        file_patch = utils.file_download(file_info, './photos/')
 
     concepts = itertools.islice(analise_photo(file_patch), config.CONCEPTS_COUNT)
 
