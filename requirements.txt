@@ -12,6 +12,6 @@ Pillow==5.2.0
 pymorphy2==0.8
 pymorphy2-dicts==2.4.393442.3710985
 pyTelegramBotAPI==3.6.6
-requests==2.18.4
+requests>=2.20.0
 Telethon==1.4.3
 wit==5.1.0
