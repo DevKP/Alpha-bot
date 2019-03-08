@@ -1,14 +1,17 @@
 ﻿# -*- coding: utf-8 -*-
 
-token = 'TOKEN'
-provider_token = '361519591:TEST:36f78445e159f9c11e7ff86bb9184e01'
+token = ''  # Bot API token
+provider_token = '' 
+WIT_token = ''  # WIT token
+api_id = 0  # Telegram Client ID
+api_hash = ''  # Telegram Client Hash
 
-WEBHOOK_HOST = '176.37.39.165'
+WEBHOOK_HOST = '0.0.0.0'  # Host IP
 WEBHOOK_PORT = 8443  # 443, 80, 88, 8443
 WEBHOOK_LISTEN = '0.0.0.0'
 
-WEBHOOK_SSL_CERT = './webhook_test_cert.pem'  # Путь к сертификату
-WEBHOOK_SSL_PRIV = './webhook_test_pkey.pem'  # Путь к приватному ключу
+WEBHOOK_SSL_CERT = './webhook_cert.pem'  # Certificate path
+WEBHOOK_SSL_PRIV = './webhook_pkey.pem'  # Private key path
 
 WEBHOOK_URL_BASE = "https://{0}:{1}".format(WEBHOOK_HOST, WEBHOOK_PORT)
 WEBHOOK_URL_PATH = "/{:s}/".format(token)
@@ -16,19 +19,15 @@ WEBHOOK_URL_PATH = "/{:s}/".format(token)
 send_chat_id = -1001125742098
 bot_id = 407478787
 
-allowed_users = {
-    204678400, 
-    59415606,
-    243956745
-}
-
 exec_allowed_users = {
-    204678400, 
+    204678400,
     59415606,
     198813830,
-    30260375,
-	243956745
+    243956745,
+    56653908,
+    331016418
 }
 
-CONCEPTS_COUNT = 3  # Количество ключевых слов
+stickers_black_list = {'CAADAgADCw8AAtEbogwJPT3WA-qidwI'}
 
+CONCEPTS_COUNT = 3  # Number of keywords

@@ -1,56 +1,85 @@
-﻿# -*- coding: utf-8 -*-
-from datetime import datetime
+# -*- coding: utf-8 -*-
+from datetime import datetime, timedelta
+import json
+import requests
 
-STREAMS = [
-    {
-    'datetime': datetime(2017, 11, 28, 7, 41, 0),
-    'time_str_ua': '7:41',
-    'time_str_ru': '8:41',
-    'rocket': 'Союз-2',
-    'place': 'Космодром «Восточный»',
-    'stream_link': None,
-    'info_link': None
-    }
-]
+# Launch Status
+l_status = ["", "Launch is GO", "Launch is NO-GO",
+            "Launch was a success", "Launch failed"]
+
+# Message Template
+l_template = '''<b>Следующий пуск через {delta_ua}</b>
+<b>По Киеву</b><a href="{pic}">:</a> {time_ua}
+<b>По МСК</b>: {time_msk}
+
+<b>Ракета-носитель:</b> {rocket}(<a href="{r_wiki}">wiki</a>)
+<b>Место пуска:</b> {place}(<a href="{p_wiki}">wiki</a>) <a href="{p_map}">🗺</a>
+<b>Полезная нагрузка:</b> {payload}
+
+<b>Миссия:</b> {mission}
+
+<b>СТАТУС:</b> {status}
+<b>Watch:</b> {watch}
+
+{hold}
+<b>Внимание! Учтите, что трансляция начинается за 20-30 минут до пуска!</b>
+'''
 
 
-def get_next_stream_msg(streams):
-    actual_stream = None
+holdreason = 'IN HOLD! Hold Reason: {}\n'  # Message if launch in hold state
+watch_link = None  # AC channel stream link
 
-    for stream in streams:
-        if (stream['datetime'] - datetime.now()).total_seconds() > 0:
-            actual_stream = stream
-            break
 
-    delta = actual_stream['datetime'] - datetime.now()
+def get_next_stream_msg():
+    ''' Gets info about the next launch from launchlibrary.net
 
-    if delta.total_seconds() < 0:
-        hours, remainder = divmod(delta.total_seconds() * -1, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        time = 'Пуск должен был состояться *%dч. %dмин. назад*' % (hours, minutes)
+    Returns
+    -------
+    string
+        Formatted message string with information about the next launch.
+
+    Raises
+    ------
+    Exception
+        If response status code isn't 200
+    '''
+
+    resp = requests.get('https://launchlibrary.net/1.3/launch/next/1')
+    if resp.status_code == 200:
+        json_obj = json.loads(resp.content.decode("utf-8"))
+        launch = json_obj['launches'][0]
+
+        time_ua = datetime.fromtimestamp(launch['netstamp'])
+        ua_delta_ua = time_ua - datetime.now()
+        delta_ua = str(
+            timedelta(seconds=ua_delta_ua.seconds, days=ua_delta_ua.days))
+
+        time_msk = time_ua
+        delta_msk = delta_ua
+
+        rocket = launch['rocket']['name']
+        r_wiki = launch['rocket']['wikiURL']
+        place = launch['location']['pads'][0]['name']
+        p_wiki = launch['location']['pads'][0]['wikiURL']
+        status = l_status[launch['status']]
+        pic = (watch_link or launch['rocket']['imageURL'])
+        payload = launch['missions'][0]['name']
+        mission = launch['missions'][0]['description']
+        p_map = 'https://www.google.com/maps/?q={},{}'.format(
+                                    launch['location']['pads'][0]['latitude'],
+                                    launch['location']['pads'][0]['longitude'])
+
+        if launch['inhold'] == True:
+            hold = holdreason.format(launch['holdreason'])
+        else:
+            hold = ''
+
+        return l_template.format(time_ua=time_ua.strftime("%d.%m %H:%M:%S"),
+            delta_ua=delta_ua, time_msk=time_msk.strftime("%d.%m %H:%M:%S"),
+            delta_msk=delta_msk, rocket=rocket, r_wiki=r_wiki, place=place,
+            p_wiki=p_wiki, status=status, pic=pic, p_map=p_map, hold=hold,
+            payload=payload, mission=mission, watch=(watch_link or ' ... '))
+
     else:
-        days, remainder = divmod(delta.total_seconds(), 86400)
-        hours, remainder = divmod(remainder, 3600)
-        minutes = round(remainder / 60)
-
-        if days == 0:
-            days = ''
-        else:
-            days = '%dд. ' % days
-
-        if hours == 0:
-            hours = ''
-        else:
-            hours = '%dч. ' % hours
-        
-        time = 'Следующий пуск состоится *через {}{}{}мин.*'.format(days, hours, minutes)
-
-    info_text = '{0} ({1} по Киеву/{2} МСК).\n' \
-                'Ракета-носитель: {3}.\n' \
-                'Место пуска: {4}\n\n' \
-                '[Ссылка на трансляцию]({5})\n' \
-                '[Информация о пуске]({6})\n\n'.format(time, actual_stream['time_str_ua'], actual_stream['time_str_ru'], actual_stream['rocket'], actual_stream['place'],
-                                                       actual_stream['stream_link'] or '', actual_stream['info_link'] or '')
-    caution_text = '*Внимание! Учтите, что трансляция начинается за 20-30 минут до пуска!*'
-
-    return "".join([info_text, caution_text, ' ' if actual_stream['stream_link'] else '\n//\n\n//'])
+        print("error ", resp.status_code)
+        raise Exception("Response: {}".format(resp.status_code))
