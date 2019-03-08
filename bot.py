@@ -329,7 +329,7 @@ def sticker_message(msg):
 @bot.message_handler(content_types=['document'])
 def document_message(msg):
     logger.info("{:s}: [DOCUMENT] {:s}".format(msg.from_user.first_name,
-                                               msg.sticker.file_id))
+                                               msg.document.file_id))
 
     try:
         os.makedirs("./documents")
