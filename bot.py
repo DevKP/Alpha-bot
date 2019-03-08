@@ -1,6 +1,4 @@
-﻿# -*- coding: utf-8 -*-
-from io import StringIO
-import sys
+# -*- coding: utf-8 -*-
 import logging
 import os
 import re
@@ -11,61 +9,84 @@ from time import sleep
 import calendar
 from datetime import timedelta
 from datetime import datetime
-import urllib.request, json
-from uuid import uuid4
+import json
 import threading
-from PIL import Image, ImageFont, ImageDraw, ImageEnhance, ImageFilter
-import xml.etree.ElementTree as etree 
-
+from PIL import Image, ImageFont, ImageDraw, ImageFilter
+import xml.etree.ElementTree as etree
 import cherrypy
 import requests
-import telebot
 
+import telebot
 from telebot import types
+from telethon import TelegramClient
 
 import config
 import nextstream
 import picturedetect
 import ru_strings
-import payments
+import birthdays
 from utils import logger
 
 from wit import Wit
 import subprocess
-import tempfile
 
 from gtts import gTTS
 
-client = Wit('VUSXEG457XQEH57D5YAD3KFX76YAIODS')
 
+client = Wit(config.WIT_token)
+
+telebot.logger.setLevel(logging.INFO)
 bot = telebot.TeleBot(config.token)
-payments.bot = bot
 
-cherrypy.config.update({'log.screen': False,
-                        'log.access_file': '',
-                        'log.error_file': ''})
+chatusers = 0
+with TelegramClient("Session", config.api_id, config.api_hash) as Tclient:
+    chatusers = Tclient.get_participants(config.send_chat_id)
+
+allow_processing = False
 
 
-class WebhookServer(object):
-    @cherrypy.expose
-    def index(self):
-        if 'content-length' in cherrypy.request.headers and \
-                        'content-type' in cherrypy.request.headers and \
-                        cherrypy.request.headers['content-type'] == 'application/json':
-            length = int(cherrypy.request.headers['content-length'])
-            json_string = cherrypy.request.body.read(length).decode("utf-8")
-            #print(json_string)
-            update = telebot.types.Update.de_json(json_string)
-            bot.process_new_updates([update])
-            return ''
-        else:
-            raise cherrypy.HTTPError(403)
+def onStartProcessing():
+    global allow_processing
+    allow_processing = True
+    logger.info("Alpha-Bot started!")
+
+
+# class WebhookServer(object):
+#     @cherrypy.expose
+#     def index(self):
+#         if 'content-length' in cherrypy.request.headers and \
+#                         'content-type' in cherrypy.request.headers and \
+#                         cherrypy.request.headers['content-type'] == 'application/json':
+#             length = int(cherrypy.request.headers['content-length'])
+#             json_string = cherrypy.request.body.read(length).decode("utf-8")
+#
+#             # print(json_string)
+#
+#             update = telebot.types.Update.de_json(json_string)
+#             if allow_processing is True:
+#                 bot.process_new_updates([update])
+#             return ''
+#         else:
+#             raise cherrypy.HTTPError(403)
 
 
 SEND_MESSAGE, REPLY_MESSAGE = range(2)
 
 
 def random_message(message, string_list, mode):
+    '''
+    Sands random massage and sticker
+
+    Parameters
+        ----------
+        message : str
+            message from  chat
+        string_list : str
+            Json list with texts
+        mode : type
+            SEND_MESSAGE, REPLY_MESSAGE
+    '''
+
     strings_num = len(string_list['strings'])
     r_number = randrange(0, strings_num, 1)
 
@@ -82,58 +103,11 @@ def random_message(message, string_list, mode):
 def listener(messages):
     try:
         for msg in messages:
-            #print(msg)
-            if msg.new_chat_member is not None:
-                if msg.new_chat_member.id == config.bot_id:
-                    bot.send_message(msg.chat.id, ru_strings.BOT_HI_MESSAGE["strings"][0])
-                    bot.send_sticker(msg.chat.id, ru_strings.BOT_HI_MESSAGE['stickers'][0])
-                else:
-                    logger.info("New chat member, username: @{:s}".format(msg.from_user.username or "NONE"))
-                    keyboard = types.InlineKeyboardMarkup()
-                    url_button = types.InlineKeyboardButton(
-                        text="И Правила Прочти", url="http://telegram.me/alphaofftopbot")
-                    keyboard.add(url_button)
-                    random_number = randrange(0, len(ru_strings.HELLO_MESSAGE["strings"]), 1)
-                    bot.reply_to(msg, ru_strings.HELLO_MESSAGE["strings"][random_number] + '\n*Оставь пердак свой всяк сюда входящий, ибо сгорит!*', reply_markup=keyboard, parse_mode='Markdown')
-            else:
-                #antispam(msg)
-                if msg.text is not None:
-                    logger.info("[CHAT] {}: {}".format(msg.from_user.first_name, msg.text))
+            if msg.text is not None:
+                logger.info("[CHAT] {} ({}): {}".format(
+                        msg.from_user.first_name, msg.from_user.id, msg.text))
     except Exception as e:
         logger.error("[Update listener] unexpected error: {}".format(e))
-
-time_window = 1
-messages_list = []
-def antispam(message):
-    if(len(messages_list) > 1):
-        while (messages_list[-1].date - messages_list[0].date) > time_window:
-            messages_list.pop(0)
-        
-    messages_list.append(message)
-
-    messages_count = dict()
-    for msg in messages_list:
-        if msg.content_type is not 'photo':
-            if messages_count.get(msg.from_user.id) is None:
-                messages_count.setdefault(msg.from_user.id, 1)
-            else:
-                messages_count[msg.from_user.id] += 1
-
-    for user, count in messages_count.items():
-        freq = count
-        #print("{{\"{}\": {}}}".format(user, freq))
-        if freq > 3:
-            for msg in messages_list:
-                if msg.from_user.id == user:
-                    bot.delete_message(message.chat.id, msg.message_id)
-
-            d = datetime.utcnow()
-            d = d + timedelta(0, 200)
-            timestamp = calendar.timegm(d.utctimetuple())
-            messages_list.clear()
-            bot.restrict_chat_member(message.chat.id, user, timestamp, False, False, False, False)
-            bot.send_message(message.chat.id, "*{} уходит в бан! Причина: СПАМ*"
-                                 .format(message.from_user.first_name), parse_mode='Markdown')
 
 
 @bot.message_handler(commands=['rate'])
@@ -146,57 +120,176 @@ def rate_command(message):
     update_crypto_rate(msg_to_update)
 
 
-def update_crypto_rate(message):
-    text = ''
-    resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=BTC&tsym=USD&e=Poloniex,Kraken,Coinbase,HitBTC,Bitfinex&extraParams=Persik")
-    if resp.status_code == 200:
-        json_obj = json.loads(resp.content.decode("utf-8"))
-        text += "1 btc = {} usd\n".format(json_obj['RAW']['PRICE'])
-    resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=ETH&tsym=USD&e=Poloniex,Kraken,Coinbase,HitBTC,Bitfinex&extraParams=Persik")
-    if resp.status_code == 200:
-        json_obj = json.loads(resp.content.decode("utf-8"))
-        text += "1 eth = {} usd\n".format(json_obj['RAW']['PRICE'])
-    resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=ETC&tsym=USD&e=Poloniex,Kraken,HitBTC,Bitfinex&extraParams=Persik")
-    if resp.status_code == 200:
-        json_obj = json.loads(resp.content.decode("utf-8"))
-        text += "1 etc = {} usd\n".format(json_obj['RAW']['PRICE'])
-    resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=ZEC&tsym=USD&e=Poloniex,Kraken,HitBTC,Bitfinex&extraParams=Persik")
-    if resp.status_code == 200:
-        json_obj = json.loads(resp.content.decode("utf-8"))
-        text += "1 zec = {} usd\n\n".format(json_obj['RAW']['PRICE'])
-
-    text += datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S")
+@bot.message_handler(func=lambda m: True, content_types=['new_chat_members'])
+def on_user_joins(message):
+    logger.info("New chat member, username: @{:s}".format(
+                                        message.from_user.username or "NONE"))
 
     keyboard = types.InlineKeyboardMarkup()
-    button = types.InlineKeyboardButton("Update",callback_data='update')
+
+    choice1 = types.InlineKeyboardButton(
+        "Суицид!", callback_data='choice1$' + str(message.from_user.id))
+
+    choice2 = types.InlineKeyboardButton(
+        "Вперед!", callback_data='choice2$' + str(message.from_user.id))
+
+    keyboard.row(choice1, choice2)
+
+    # Use firstname if username is NONE
+    if message.from_user.username is not None:
+        username_str = '@{}'.format(message.from_user.username)
+    else:
+        username_str = message.from_user.first_name or 'Ноунейм'
+
+    message_str = '{}! Готов(а) ли ты сжигать пукан свой в пепел вместе с нами?🔥'.format(
+        username_str)
+
+    # Temporary restrict user
+    bot.send_message(message.chat.id, message_str, reply_markup=keyboard)
+
+    # Catch "can't demote chat creator" Exception
+    try:
+        bot.restrict_chat_member(
+            message.chat.id, message.from_user.id, 1, False, False, False, False)
+    except Exception:
+        logger.info("[EXCEPTION] Bad Request: can't demote chat creator!")
+
+
+@bot.callback_query_handler(func=lambda call: 'choice' in call.data)
+def chair_bonjour(call):
+    new_user_id = call.data[len('choice1$'):]  # substring ID from callback data
+    if new_user_id != str(call.from_user.id):  # Ignore existing chat memders
+        return
+
+    # Delete our message
+    bot.delete_message(call.message.chat.id, call.message.message_id)
+    if 'choice1' in call.data:  # First button or second button(choice1 or choice2)
+
+        logger.info("[Bonjour]: @{:s} pressed FIRST button!".format(
+            call.from_user.username or "NONE"))
+
+        # Getting current timestamp
+        d = datetime.utcnow()
+        d = d + timedelta(0, 30)
+        timestamp = calendar.timegm(d.utctimetuple())
+
+        # Catch "user is an administrator of the chat" Exception
+        try:
+            # Ban user from chat for 30 seconds
+            bot.kick_chat_member(call.message.chat.id, new_user_id, until_date=timestamp)
+        except Exception:
+            logger.info("[EXCEPTION] Bad Request: User is an administrator of the chat!")
+    else:
+        logger.info("[Bonjour]: @{:s} pressed SECOND button!".format(
+            call.from_user.username or "NONE"))
+
+        # Use firstname if username is NONE
+        if call.from_user.username is not None:
+            username_str = '@{}'.format(call.from_user.username)
+        else:
+            username_str = call.from_user.first_name or 'Ноунейм'
+
+        bot.send_message(call.message.chat.id, username_str
+                         + ' решил(а) остатся!☝️ \nВстречайте героя!👻')
+
+        # Catch "can't demote chat creator" Exception
+        try:
+            # Unrestrict user
+            bot.restrict_chat_member(
+                call.message.chat.id, call.from_user.id, 1, True, True, True, True)
+        except Exception:
+            logger.info("[EXCEPTION] Bad Request: can't demote chat creator!")
+
+
+def update_crypto_rate(message):
+    text = ''
+    resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=BTC&tsym=USD&e=Poloniex,Kraken,Coinbase,Bitfinex&extraParams=Persik")
+    if resp.status_code == 200:
+        json_obj = json.loads(resp.content.decode("utf-8"))
+        text += "1 btc = {}$ ({:.2f}% / 24h)".format(json_obj['RAW']['PRICE'], json_obj['RAW']['CHANGEPCT24HOUR'])
+        if json_obj['RAW']['CHANGEPCT24HOUR'] > 0:
+            text += "💹\n"
+        else:
+            text += "🔻\n"
+    resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=ETH&tsym=USD&e=Poloniex,Kraken,Coinbase,Bitfinex&extraParams=Persik")
+    if resp.status_code == 200:
+        json_obj = json.loads(resp.content.decode("utf-8"))
+        text += "1 eth = {}$ ({:.2f}% / 24h)".format(json_obj['RAW']['PRICE'], json_obj['RAW']['CHANGEPCT24HOUR'])
+        if json_obj['RAW']['CHANGEPCT24HOUR'] > 0:
+            text += "💹\n"
+        else:
+            text += "🔻\n"
+    resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=ETC&tsym=USD&e=Poloniex,Kraken,Bitfinex&extraParams=Persik")
+    if resp.status_code == 200:
+        json_obj = json.loads(resp.content.decode("utf-8"))
+        text += "1 etc = {}$ ({:.2f}% / 24h)".format(json_obj['RAW']['PRICE'], json_obj['RAW']['CHANGEPCT24HOUR'])
+        if json_obj['RAW']['CHANGEPCT24HOUR'] > 0:
+            text += "💹\n"
+        else:
+            text += "🔻\n"
+    resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=ZEC&tsym=USD&e=Poloniex,Kraken,Bitfinex&extraParams=Persik")
+    if resp.status_code == 200:
+        json_obj = json.loads(resp.content.decode("utf-8"))
+        text += "1 zec = {}$ ({:.2f}% / 24h)".format(json_obj['RAW']['PRICE'], json_obj['RAW']['CHANGEPCT24HOUR'])
+        if json_obj['RAW']['CHANGEPCT24HOUR'] > 0:
+            text += "💹\n"
+        else:
+            text += "🔻\n"
+    resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=LTC&tsym=USD&e=Poloniex,Kraken,Coinbase,Bitfinex&extraParams=Persik")
+    if resp.status_code == 200:
+        json_obj = json.loads(resp.content.decode("utf-8"))
+        text += "1 ltc = {}$ ({:.2f}% / 24h)".format(json_obj['RAW']['PRICE'], json_obj['RAW']['CHANGEPCT24HOUR'])
+        if json_obj['RAW']['CHANGEPCT24HOUR'] > 0:
+            text += "💹\n"
+        else:
+            text += "🔻\n"
+    resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=BCH&tsym=USD&e=Exmo&extraParams=Persik")
+    if resp.status_code == 200:
+        json_obj = json.loads(resp.content.decode("utf-8"))
+        text += "1 bch = {}$ ({:.2f}% / 24h)".format(json_obj['RAW']['PRICE'], json_obj['RAW']['CHANGEPCT24HOUR'])
+        if json_obj['RAW']['CHANGEPCT24HOUR'] > 0:
+            text += "💹\n\n"
+        else:
+            text += "🔻\n\n"
+
+    text += datetime.strftime(datetime.now(), "%d.%m.%Y %H:%M")
+
+    keyboard = types.InlineKeyboardMarkup()
+    button = types.InlineKeyboardButton("Update", callback_data='update')
     keyboard.add(button)
 
-    bot.edit_message_text(text,message.chat.id, message.message_id, reply_markup=keyboard)
+    bot.edit_message_text(text, message.chat.id, message.message_id, reply_markup=keyboard)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'update')
-def donate_btn(call):
+def update_btn(call):
+    bot.edit_message_text("*Updating...*", call.message.chat.id,
+                          call.message.message_id, parse_mode='Markdown')
     update_crypto_rate(call.message)
 
-        
+
 @bot.message_handler(commands=['exch'])
 def exch_command(message):
     resp = requests.get("http://cbr.ru/scripts/XML_daily.asp", stream=True)
     if resp.status_code == 200:
-         root = etree.fromstring(resp.content.decode("windows-1251").encode('utf-8').decode('utf-8'))
+        root = etree.fromstring(resp.content.decode(
+             "windows-1251").encode('utf-8').decode('utf-8'))
 
-         exch = ''
-         for valute in root.findall('Valute'):
-             if valute.get('ID') == 'R01235':
-                 exch = valute.find('Value').text
-                 break
-         bot.send_message(message.chat.id,"1 USD = {} RUB".format(exch), parse_mode='Markdown')
+        exch = ''
+        for valute in root.findall('Valute'):
+            if valute.get('ID') == 'R01235':
+                exch = valute.find('Value').text
+                break
+        bot.send_message(message.chat.id, "1 USD = {} RUB".format(
+            exch), parse_mode='Markdown')
 
     resp = requests.get("http://www.nbrb.by/API/ExRates/Rates/USD?ParamMode=2")
     if resp.status_code == 200:
         json_obj = json.loads(resp.content.decode("utf-8"))
-        bot.send_message(message.chat.id,"1 USD = {} BYN".format(json_obj['Cur_OfficialRate']), parse_mode='Markdown')
-    resp = requests.get("https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json")
+        bot.send_message(message.chat.id, "1 USD = {} BYN".format(
+            json_obj['Cur_OfficialRate']), parse_mode='Markdown')
+    resp = requests.get(
+        "https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json")
     if resp.status_code == 200:
         json_obj = json.loads(resp.content.decode("utf-8"))
         exch = ''
@@ -204,54 +297,47 @@ def exch_command(message):
             if curr['cc'] == 'USD':
                 exch = curr['rate']
                 break
-        bot.send_message(message.chat.id,"1 USD = {} UAH".format(exch), parse_mode='Markdown')
+        bot.send_message(message.chat.id, "1 USD = {} UAH".format(
+            exch), parse_mode='Markdown')
 
 
-@bot.message_handler(commands=['exec'])#its mistake dont do it
-def eval_command(message):
-    if all(message.from_user.id != user for user in config.exec_allowed_users):
-           return
-    with StringIO() as buf:
-        sys.stdout = buf
-        try:
-            res = exec(message.text[6:])
-            if res:
-                bot.send_message(message.chat.id, res)
-        finally:
-            sys.stdout = sys.__stdout__
-        result = buf.getvalue()
-        if result:
-            bot.send_message(message.chat.id, result or 'Empty')
+#@bot.message_handler(commands=['test'])
+#def test_command(message):
 
-@bot.message_handler(commands=['test'])
-def test_command(message):
-    keyboard = types.InlineKeyboardMarkup()
-    url_button = types.InlineKeyboardButton(
-        text="ДА! НА ЭТУ!",callback_data='dntpush')
-    keyboard.add(url_button)
-    bot.send_message(message.chat.id, "*НЕ ЖМИ НА КНОПКУ!!*", reply_markup=keyboard, parse_mode='Markdown')
+    #markup = types.InlineKeyboardMarkup()
+    #itembtn1 = types.InlineKeyboardButton('TEST', callback_data='test')
+    #markup.add(itembtn1)
+    #bot.send_message(message.chat.id, "Нажми для теста", reply_markup=markup)
+    #sleep(2)
+    # bot.answer_callback_query('TEST', "СУКА ЧТО ЭТО ЗА ПОЕБЕНЬ?", show_alert=True)
 
 
-@bot.callback_query_handler(func=lambda call: call.data == 'dntpush')
-def donate_btn(call):
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-    bot.set_chat_title(call.message.chat.id, "{}, НУ ЗАЧЕМ, Я ЖЕ ПРОСИЛ!!!".format(call.from_user.first_name.upper()))
-    sleep(60)
-    bot.set_chat_title(call.message.chat.id, "Чат Alpha Centauri | Оффтоп")
+# @bot.callback_query_handler(func=lambda call: call.data == 'test')
+# def test_callback_answer(call):
+#    bot.answer_callback_query(call.id, "Тест Тест\n\nПеренос строки\nЭмоджики 🤯👍🙄👀👄🖖🏽🖐🦷👄", show_alert=True)
 
-@bot.message_handler(commands=['footfetishfreyja'])
-def test_command(message):
-    bot.delete_message(message.chat.id, message.message_id)
 
 
 @bot.message_handler(content_types=['sticker'])
 def sticker_message(msg):
-    logger.info("{:s}: [STICKER] {:s}".format(msg.from_user.first_name, msg.sticker.file_id))
+    if any(msg.sticker.file_id == sticker_ID for sticker_ID in config.stickers_black_list):
+        bot.delete_message(msg.chat.id, msg.message_id)
+        logger.info("{:s}: [STICKER] {:s} in BLACKLIST! Deleted!".format(
+            msg.from_user.first_name, msg.sticker.file_id))
+
+    logger.info("{:s}: [STICKER] {:s}".format(
+        msg.from_user.first_name, msg.sticker.file_id))
 
 
 @bot.message_handler(content_types=['document'])
 def document_message(msg):
-    logger.info("{:s}: [DOCUMENT] {:s}".format(msg.from_user.first_name, msg.document.file_id))
+    logger.info("{:s}: [DOCUMENT] {:s}".format(msg.from_user.first_name, msg.sticker.file_id))
+
+    try:
+        os.makedirs("./documents")
+    except FileExistsError:
+        pass
+
     file_download(msg.document.file_id, './documents/')
 
 
@@ -268,51 +354,51 @@ def convert_oga_to_mp3(in_filename=None):
     proc.wait()
 
 
-@bot.message_handler(content_types=['voice'])
-def audio_message(msg):
-    logger.info("{:s}: [VOICE] {:s}".format(msg.from_user.first_name, msg.voice.file_id))
-    file_download(msg.voice.file_id, './voice/')
-    resp = None
-    attempts = 5
-
-    convert_oga_to_mp3('./voice/{}'.format(msg.voice.file_id))
-    for i in range(attempts):
-        logger.info("{:s}: [VOICE Recognition] Sending to server. Attempt: {}".format(msg.from_user.first_name, i+1))
-
-        try:
-            with open('./voice/{}.mp3'.format(msg.voice.file_id), 'rb') as f:
-                resp = client.speech(f, None, {'Content-Type': 'audio/mpeg3'})
-        except Exception as e:
-            logger.error("[VOICE Recognition] Unexpected error: {}".format(e))
-
-        if resp is None:
-            continue
-
-        bot.reply_to(msg, '<b>voice:</b> {}'.format(resp['_text']), parse_mode='HTML')
-        os.remove('./voice/{}'.format(msg.voice.file_id))
-        logger.info("{:s}: [VOICE Recognition] DONE! Result: {:s}".format(msg.from_user.first_name, resp['_text']))
-        return
-
-    bot.reply_to(msg, '*Не распознается :c*', parse_mode='Markdown')
-
-
-@bot.message_handler(content_types=['video'])
-def audio_message(msg):
-    logger.info("{:s}: [AUDIO] {:s}".format(msg.from_user.first_name, msg.video.file_id))
-
-
 @bot.message_handler(content_types=['left_chat_member'])
 def left_chat_message(msg):
-    logger.info("Left chat member, username: @{:s}".format(msg.from_user.username))
+    logger.info("Left chat member, username: @{:s}".format(
+        msg.from_user.username))
+
     bot.send_message(msg.chat.id, ru_strings.GOODBYE_MESSAGE['strings'][0], parse_mode='Markdown')
     bot.send_sticker(msg.chat.id, ru_strings.GOODBYE_MESSAGE['stickers'][0])
 
 
-def file_download(file_id, path):
+@bot.message_handler(commands=['everyone'])
+def info_command(message):
+    administrators = bot.get_chat_administrators(config.send_chat_id)
+    if any(message.from_user.id == member.user.id for member in administrators):
+        logger.info("/everyone command by {:s}, Username @{:s}"
+                     .format(message.from_user.first_name, (message.from_user.username or "NONE")))
+        message_text = ""
+        bot.send_message(message.chat.id, "*@everyone* 😈", parse_mode='Markdown')
+        for x in range(0, len(chatusers)):
+            message_text += "[.](tg://user?id=" + str(chatusers[x].id) + ") "
+            if (x + 1) % 10 == 0:
+                bot.send_message(message.chat.id, message_text, parse_mode='Markdown')
+                message_text = ""
+
+        if len(message_text) > 1:
+            bot.send_message(message.chat.id, message_text, parse_mode='Markdown')
+
+
+def file_download(file_id, path, attempts=3):
+    '''
+    Downloads file to path
+    Returns : file path
+
+    Parameters
+    ----------
+    file_id : str
+        File ID
+    path : str
+        Save path
+    attempts : int
+        Amount of tries (default 3)
+    '''
+
     file_info = bot.get_file(file_id)
     _, file_extension = os.path.splitext(file_info.file_path)
     filename = file_id
-    attempts = 5
 
     for i in range(attempts):
         file = requests.get('https://api.telegram.org/file/bot{}/{}'.format(config.token, file_info.file_path),
@@ -320,7 +406,7 @@ def file_download(file_id, path):
         if file.status_code == 200:
             file_patch = "".join([path, filename, file_extension])
             try:
-                with open(file_patch, 'wb') as f:
+                with open(file_patch, 'bw+') as f:
                     file.raw.decode_content = True
                     shutil.copyfileobj(file.raw, f)
             except Exception as e:
@@ -329,7 +415,9 @@ def file_download(file_id, path):
 
             return file_patch
         else:
-            logger.error("(Attempt #{}) File download error! Status Code: {}".format(i, file.status_code))
+            logger.error("(Attempt #{}) File download error! Status Code: {}".format(
+                i, file.status_code))
+
             sleep(3)
 
     return None
@@ -339,6 +427,7 @@ def file_download(file_id, path):
 def start_command(message):
     logger.info("/start command by {:s}, Username {:s}"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE")))
+
     if message.chat.id > 0:
         bot.send_message(message.chat.id, ru_strings.START_MESSAGE['strings'][0].format(message.chat.first_name))
         sleep(2)
@@ -349,7 +438,7 @@ def start_command(message):
 def next_stream_command(message):
     logger.info("/nextstream command by {:s}, Username @{:s}"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE")))
-    bot.send_message(message.chat.id, nextstream.get_next_stream_msg(nextstream.STREAMS), parse_mode='Markdown')
+    bot.send_message(message.chat.id, nextstream.get_next_stream_msg(), parse_mode='HTML')
 
 
 @bot.message_handler(commands=['gotospace'])
@@ -366,11 +455,16 @@ def info_command(message):
     bot.send_message(message.chat.id, ru_strings.INFO_COMMAND_MESSAGE, parse_mode='Markdown')
 
 
-@bot.message_handler(commands=['msg'])
+@bot.message_handler(commands = ['msg'])
 def send_msg_command(message):
     logger.info("/msg command by {:s}, Username @{:s}"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE")))
-    if any(message.from_user.id == user for user in config.allowed_users) or message.from_user.id == 243956745:
+
+    if message.chat.type != "private":
+        return
+
+    administrators = bot.get_chat_administrators(config.send_chat_id)
+    if any(message.from_user.id == member.user.id for member in administrators) or message.from_user.id == 204678400:
         logger.info("The owner detected!")
         bot.send_message(message.chat.id, ru_strings.SEND_MSG_MESSAGE['strings'][0], parse_mode='Markdown')
         bot.register_next_step_handler(message, send_message)
@@ -381,36 +475,66 @@ def send_msg_command(message):
 def send_message(message):
     if message.text:
         if message.text.find('/cancel') != -1:
-            bot.send_message(message.chat.id, ru_strings.CANCEL_MESSAGE['strings'][0], parse_mode='Markdown')
+            bot.send_message(
+                message.chat.id, ru_strings.CANCEL_MESSAGE['strings'][0], parse_mode='Markdown')
         else:
-            bot.send_message(config.send_chat_id, message.text, parse_mode='Markdown')
-            logger.info("Sending message {:s} to chat {:d}".format(message.text, config.send_chat_id))
-            bot.send_message(message.chat.id, ru_strings.SEND_MSG_MESSAGE['strings'][1], parse_mode='Markdown')
+            bot.send_message(config.send_chat_id,
+                             message.text, parse_mode='Markdown')
+            logger.info("Sending message {:s} to chat {:d}".format(
+                message.text, config.send_chat_id))
+            bot.send_message(
+                message.chat.id, ru_strings.SEND_MSG_MESSAGE['strings'][1], parse_mode='Markdown')
+    elif message.photo:
+
+        try:
+            os.makedirs("./photos")
+        except FileExistsError:
+            pass
+
+        file_id = message.photo[len(message.photo) - 1].file_id
+        file_patch = file_download(file_id, './photos/')
+        with open(file_patch, 'rb') as photo:
+            bot.send_photo(config.send_chat_id, photo)
+
+        logger.info("Sending photo {:s} to chat {:d}".format(
+            file_id, config.send_chat_id))
+        bot.send_message(
+            message.chat.id, ru_strings.SEND_MSG_MESSAGE['strings'][1], parse_mode='Markdown')
 
 
 @bot.message_handler(commands=['stk'])
 def stk_command(message):
     logger.info("/stk command by {:s}, Username @{:s}"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE")))
-    if any(message.from_user.id == user for user in config.allowed_users) or message.from_user.id == 243956745:
+
+    if message.chat.type != "private":
+        return
+
+    administrators = bot.get_chat_administrators(config.send_chat_id)
+    if any(message.from_user.id == member.user.id for member in administrators):
         logger.info("The owner detected!")
-        bot.send_message(message.chat.id, ru_strings.SEND_STICKER_MESSAGE['strings'][0], parse_mode='Markdown')
+        bot.send_message(
+            message.chat.id, ru_strings.SEND_STICKER_MESSAGE['strings'][0], parse_mode='Markdown')
         bot.register_next_step_handler(message, send_sticker)
     else:
         logger.info("This isn't the owner!")
 
 
 def send_sticker(message):
-    if message.content_type is not 'sticker':
+    if message.content_type != 'sticker':
         if message.text is not None:
             if message.text.find('/cancel') != -1:
-                bot.send_message(message.chat.id, ru_strings.CANCEL_MESSAGE['strings'][0], parse_mode='Markdown')
+                bot.send_message(
+                    message.chat.id, ru_strings.CANCEL_MESSAGE['strings'][0], parse_mode='Markdown')
             else:
-                bot.send_message(message.chat.id, ru_strings.SEND_STICKER_MESSAGE['stickers'][1], parse_mode='Markdown')
+                bot.send_message(
+                    message.chat.id, ru_strings.SEND_STICKER_MESSAGE['stickers'][1], parse_mode='Markdown')
                 bot.register_next_step_handler(message, send_sticker)
     else:
         bot.send_sticker(config.send_chat_id, message.sticker.file_id)
-        logger.info("Sending sticker {:s} to chat {:d}".format(message.sticker.file_id, config.send_chat_id))
+
+        logger.info("Sending sticker {:s} to chat {:d}".format(
+            message.sticker.file_id, config.send_chat_id))
 
 
 @bot.message_handler(commands=['getuserid'])
@@ -419,7 +543,9 @@ def get_user_id_message(message):
         return
     logger.info("/getuserid command by {:s}, Username @{:s}"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE")))
-    bot.reply_to(message, ru_strings.GET_ID_MESSAGE['strings'][0].format(message.from_user.id), parse_mode='Markdown')
+
+    bot.reply_to(message, ru_strings.GET_ID_MESSAGE['strings'][0].format(
+        message.from_user.id), parse_mode='Markdown')
 
 
 @bot.message_handler(commands=['getphoto'])
@@ -430,6 +556,11 @@ def get_file_message(message):
     if '/' in message.text[10:] or '\\' in message.text[10:]:
         return
 
+    try:
+        os.makedirs("./photos")
+    except FileExistsError:
+        pass
+
     _file = Path('./photos/{}.jpg'.format(message.text[10:]))
     if _file.is_file() is not True:
         logger.info("/getphoto command [NOT FOUND]")
@@ -437,7 +568,6 @@ def get_file_message(message):
 
     with open('./photos/{}.jpg'.format(message.text[10:]), 'rb') as photo:
         bot.send_photo(message.chat.id, photo, message.message_id)
-
 
 
 @bot.message_handler(commands=['getdocument'])
@@ -448,18 +578,42 @@ def get_document_message(message):
     bot.send_document(message.chat.id, message.text[13:], message.message_id)
 
 
-@bot.message_handler(commands=['tst'])
-def get_user_id_message(message):
-    logger.info("/donate command by {:s}, Username @{:s}"
-                .format(message.from_user.first_name, (message.from_user.username or "NONE")))
-    print(message)
-    keyboard = types.InlineKeyboardMarkup()
-    url_button = types.InlineKeyboardButton(
-        text="tst", url="http://176.37.39.165/payment1.html?PUID=")
-    keyboard.add(url_button)
-    bot.send_message(message.chat.id,
-                     'tst',
-                     reply_markup=keyboard)
+def birthday_method():
+    '''
+    Automatically publishes greetings from the list
+
+    Still in test mode!
+    TODO: replace chat_id
+    '''
+
+    logger.info('Birthday thread started!')
+    chat_id = '-1001464920421'  # Test chat id
+
+    while True:
+        todaytime = datetime.today()
+        if bot.get_chat(chat_id).pinned_message is not None:
+            pinnedmessage = bot.get_chat(chat_id).pinned_message.text
+        else:
+            pinnedmessage = 'none'
+
+        for birthday in birthdays.BIRTHDAYS_LIST:
+
+            birthdatetime = birthday[birthdays.date]
+            delta = birthdatetime - todaytime
+
+            # print(delta.total_seconds())
+
+            if(delta.total_seconds() < 0 and delta.total_seconds() > -86400):
+                # 86400 secs = 24 hours
+                pinmessage = birthday[birthdays.message]
+                if(pinmessage != pinnedmessage):
+                    # bot.send_message(message.chat.id, "ЗАМЕНИТЬ ВСЕ НАХРЕН") #DEBUG
+
+                    msg_topin = bot.send_message(chat_id, birthday[birthdays.message])
+                    sleep(1)  # Antispam
+                    bot.pin_chat_message(chat_id, msg_topin.message_id)
+                    # bot.send_message(message.chat.id, "ВСЕ ВЕРНО") #DEBUG
+        sleep(30*60)
 
 
 def extract_revenue(D):
@@ -468,39 +622,49 @@ def extract_revenue(D):
     except KeyError:
         return 0
 
+
 def makeShadow(image, iterations, border, offset, backgroundColour, shadowColour):
+    '''
+    Shadow rendering algorithm
+    '''
 
-    fullWidth  = image.size[0] + abs(offset[0]) + 2*border
+
+    fullWidth = image.size[0] + abs(offset[0]) + 2*border
     fullHeight = image.size[1] + abs(offset[1]) + 2*border
-    
-    shadow = Image.new(image.mode, (fullWidth, fullHeight), backgroundColour)
-    
-    shadowLeft = border + max(offset[0], 0)
-    shadowTop  = border + max(offset[1], 0)
 
-    shadow.paste(shadowColour, 
-                [shadowLeft, shadowTop,
-                 shadowLeft + image.size[0],
-                 shadowTop  + image.size[1] ])
-    
+    shadow = Image.new(image.mode, (fullWidth, fullHeight), backgroundColour)
+
+    shadowLeft = border + max(offset[0], 0)
+    shadowTop = border + max(offset[1], 0)
+
+    shadow.paste(shadowColour,
+                 [shadowLeft, shadowTop,
+                  shadowLeft + image.size[0],
+                  shadowTop + image.size[1]])
+
     for i in range(iterations):
         shadow = shadow.filter(ImageFilter.BLUR)
 
     imgLeft = border - min(offset[0], 0)
-    imgTop  = border - min(offset[1], 0)
+    imgTop = border - min(offset[1], 0)
     shadow.paste(image, (imgLeft, imgTop))
 
     return shadow
 
+
 @bot.message_handler(commands=['whattomine'])
 def whattomine_command(m):
-    image = Image.new("RGBA", (640,1260), (255,255,255, 255))
+    '''
+    Draws image
+    '''
+
+    image = Image.new("RGBA", (640, 1260), (255, 255, 255, 255))
     draw = ImageDraw.Draw(image)
     font = ImageFont.truetype('arial', 24)
 
     pop_curr = {"ZEC", "ETH", "ETC"}
 
-    url = 'https://whattomine.com/coins.json?utf8=%E2%9C%93&adapt_q_280x=0&adapt_q_380=0&adapt_q_fury=0&adapt_q_470=0&adapt_q_480=3&adapt_q_570=0&adapt_q_580=0&adapt_q_750Ti=0&adapt_q_1050Ti=0&adapt_q_10606=1&adapt_q_1070=0&adapt_q_1080=0&adapt_q_1080Ti=0&eth=true&factor%5Beth_hr%5D=23&factor%5Beth_p%5D=90.0&grof=true&factor%5Bgro_hr%5D=20.5&factor%5Bgro_p%5D=90.0&x11gf=true&factor%5Bx11g_hr%5D=7.2&factor%5Bx11g_p%5D=90.0&cn=true&factor%5Bcn_hr%5D=510&factor%5Bcn_p%5D=70.0&eq=true&factor%5Beq_hr%5D=320&factor%5Beq_p%5D=90.0&lre=true&factor%5Blrev2_hr%5D=25000&factor%5Blrev2_p%5D=90.0&ns=true&factor%5Bns_hr%5D=500.0&factor%5Bns_p%5D=90.0&lbry=true&factor%5Blbry_hr%5D=170.0&factor%5Blbry_p%5D=90.0&bk2bf=true&factor%5Bbk2b_hr%5D=990.0&factor%5Bbk2b_p%5D=80.0&bk14=true&factor%5Bbk14_hr%5D=1550.0&factor%5Bbk14_p%5D=90.0&pas=true&factor%5Bpas_hr%5D=580.0&factor%5Bpas_p%5D=90.0&skh=true&factor%5Bskh_hr%5D=18.0&factor%5Bskh_p%5D=90.0&factor%5Bl2z_hr%5D=420.0&factor%5Bl2z_p%5D=300.0&factor%5Bcost%5D=0.0&sort=Profitability24&volume=0&revenue=24h&factor%5Bexchanges%5D%5B%5D=&factor%5Bexchanges%5D%5B%5D=abucoins&factor%5Bexchanges%5D%5B%5D=bitfinex&factor%5Bexchanges%5D%5B%5D=bittrex&factor%5Bexchanges%5D%5B%5D=bleutrade&factor%5Bexchanges%5D%5B%5D=cryptopia&factor%5Bexchanges%5D%5B%5D=hitbtc&factor%5Bexchanges%5D%5B%5D=poloniex&factor%5Bexchanges%5D%5B%5D=yobit&commit=Calculate'
+    url = 'http://whattomine.com/coins.json?utf8=%E2%9C%93&adapt_q_280x=0&adapt_q_380=0&adapt_q_fury=0&adapt_q_470=0&adapt_q_480=3&adapt_q_570=0&adapt_q_580=0&adapt_q_750Ti=0&adapt_q_1050Ti=0&adapt_q_10606=1&adapt_q_1070=0&adapt_q_1080=0&adapt_q_1080Ti=0&eth=true&factor%5Beth_hr%5D=23&factor%5Beth_p%5D=90.0&grof=true&factor%5Bgro_hr%5D=20.5&factor%5Bgro_p%5D=90.0&x11gf=true&factor%5Bx11g_hr%5D=7.2&factor%5Bx11g_p%5D=90.0&cn=true&factor%5Bcn_hr%5D=510&factor%5Bcn_p%5D=70.0&eq=true&factor%5Beq_hr%5D=320&factor%5Beq_p%5D=90.0&lre=true&factor%5Blrev2_hr%5D=25000&factor%5Blrev2_p%5D=90.0&ns=true&factor%5Bns_hr%5D=500.0&factor%5Bns_p%5D=90.0&lbry=true&factor%5Blbry_hr%5D=170.0&factor%5Blbry_p%5D=90.0&bk2bf=true&factor%5Bbk2b_hr%5D=990.0&factor%5Bbk2b_p%5D=80.0&bk14=true&factor%5Bbk14_hr%5D=1550.0&factor%5Bbk14_p%5D=90.0&pas=true&factor%5Bpas_hr%5D=580.0&factor%5Bpas_p%5D=90.0&skh=true&factor%5Bskh_hr%5D=18.0&factor%5Bskh_p%5D=90.0&factor%5Bl2z_hr%5D=420.0&factor%5Bl2z_p%5D=300.0&factor%5Bcost%5D=0.0&sort=Profitability24&volume=0&revenue=24h&factor%5Bexchanges%5D%5B%5D=&factor%5Bexchanges%5D%5B%5D=abucoins&factor%5Bexchanges%5D%5B%5D=bitfinex&factor%5Bexchanges%5D%5B%5D=bittrex&factor%5Bexchanges%5D%5B%5D=bleutrade&factor%5Bexchanges%5D%5B%5D=cryptopia&factor%5Bexchanges%5D%5B%5D=hitbtc&factor%5Bexchanges%5D%5B%5D=poloniex&factor%5Bexchanges%5D%5B%5D=yobit'
     resp = requests.get(url)
     if resp.status_code == 200:
         json_obj = json.loads(resp.content.decode("utf-8"))
@@ -517,25 +681,31 @@ def whattomine_command(m):
         vert_offset = 60
 
         btc_price = 0
-        btc_resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=BTC&tsym=USD&e=Poloniex,Kraken,Coinbase,HitBTC,Bitfinex&extraParams=Persik")
+        btc_resp = requests.get("https://min-api.cryptocompare.com/data/generateAvg?fsym=BTC&tsym=USD&e=Poloniex,Kraken,Coinbase,Bitfinex&extraParams=Persik")
         if btc_resp.status_code == 200:
             btc_obj = json.loads(btc_resp.content.decode("utf-8"))
             btc_price = float(btc_obj['RAW']['PRICE'])
 
-            topcard = Image.new("RGBA",(650, vert_offset),(38, 193, 255, 255))
-            topcard = makeShadow(topcard, 10, 14, (0,1), (255,255,255),(80,80,80))
+            topcard = Image.new("RGBA", (650, vert_offset),
+                                (38, 193, 255, 255))
+            topcard = makeShadow(topcard, 10, 14, (0, 1),
+                                 (255, 255, 255), (80, 80, 80))
 
-            image.paste(topcard, (-20,-15))
-            draw.text((30,16), "Name(Tag)", font=ImageFont.truetype('arialbd', 24), fill='black')
-            draw.text((290,16), "Rewards 24h", font=ImageFont.truetype('arialbd', 24), fill='black')
-            draw.text((492,16), "Rev. $", font=ImageFont.truetype('arialbd', 24), fill='black')
+            image.paste(topcard, (-20, -15))
+            draw.text((30, 16), "Name(Tag)", font=ImageFont.truetype(
+                'arialbd', 24), fill='black')
+            draw.text((290, 16), "Rewards 24h", font=ImageFont.truetype(
+                'arialbd', 24), fill='black')
+            draw.text((492, 16), "Rev. $", font=ImageFont.truetype(
+                'arialbd', 24), fill='black')
 
             for i in range(15):
                 vert_y_line = vert_offset + offset * i
                 vert_y_text = vert_offset + (offset * i)
 
                 if i != 0:
-                    draw.line([(0, vert_y_line),(640, vert_y_line)],fill=(210, 214, 213)) 
+                    draw.line([(0, vert_y_line), (640, vert_y_line)],
+                              fill=(210, 214, 213))
 
                 name = json_obj['coins'][i][0]
                 algo = json_obj['coins'][i][1]["algorithm"]
@@ -544,25 +714,61 @@ def whattomine_command(m):
                 if tag != "NICEHASH":
                     name += "({})".format(tag)
 
-                draw.text((left_offset, vert_y_text + upper_offset), name, font=font, fill='black')
-                draw.text((left_offset-1, vert_y_text + lower_offset), algo, font=font, fill=(140,140,140))
+                draw.text((left_offset, vert_y_text + upper_offset),
+                          name, font=font, fill='black')
+                draw.text((left_offset-1, vert_y_text + lower_offset),
+                          algo, font=font, fill=(140, 140, 140))
 
                 intersec = {tag} & pop_curr
                 if len(intersec) != 0:
-                    draw.rectangle([(0, vert_y_text+1),(10, vert_y_text + offset - 1)], fill=(39, 186, 77))
+                    draw.rectangle(
+                        [(0, vert_y_text+1), (10, vert_y_text + offset - 1)], fill=(39, 186, 77))
 
-                profit = float(json_obj['coins'][i][1]['btc_revenue24']) * btc_price
+                profit = float(json_obj['coins'][i][1]
+                               ['btc_revenue24']) * btc_price
                 revardcoin = float(json_obj['coins'][i][1]['estimated_rewards24'])
-                draw.text((320,vert_y_text + centre_offset), "{rev24:.5f}".format(rev24=revardcoin), font=font, fill='black')
-                draw.text((500,vert_y_text + centre_offset), "{rev:.2f}$".format(rev=profit), font=font, fill='black')
+
+                draw.text((320, vert_y_text + centre_offset),
+                          "{rev24:.5f}".format(rev24=revardcoin), font=font, fill='black')
+                draw.text((500, vert_y_text + centre_offset),
+                          "{rev:.2f}$".format(rev=profit), font=font, fill='black')
+        else:
+            print("BTC price get error " + str(btc_resp.status_code))
 
         image.save('./tmp_whattomine.png', 'PNG')
         with open('./tmp_whattomine.png', 'rb') as photo:
             bot.send_photo(m.chat.id, photo)
 
+    else:
+        print("WTM coins get error " + str(resp.status_code))
+
+
+allow_nsfw = False
+@bot.message_handler(commands=['togglensfw'])
+def togglensfw(message):
+    global allow_nsfw
+
+    administrators = bot.get_chat_administrators(config.send_chat_id)
+    if any(message.from_user.id == member.user.id for member in administrators):
+
+        allow_nsfw = not allow_nsfw
+
+        if allow_nsfw is True:
+            bot.send_message(message.chat.id, ru_strings.NSFW_TOGGLE_MESSAGE['strings'][1], parse_mode='Markdown')
+        else:
+            bot.send_message(message.chat.id, ru_strings.NSFW_TOGGLE_MESSAGE['strings'][0], parse_mode='Markdown')
+
+        logger.info("/togglensfw command by {:s}, Username @{:s}".format(
+            message.from_user.first_name, (message.from_user.username or "NONE")))
+
 
 @bot.message_handler(content_types=["photo"])
 def photo_receive(message):
+    '''
+    Recognizes photos with the comment "персик"
+    Ban for NSFW
+    '''
+
     file_id = message.photo[len(message.photo) - 1].file_id
 
     if message.caption and message.forward_from is None:
@@ -571,6 +777,11 @@ def photo_receive(message):
                         parse_mode='Markdown')
 
     logger.info("Photo by Username @{:s} | ID {:s}".format((message.from_user.username or "NONE"), file_id))
+
+    try:
+        os.makedirs("./photos")
+    except FileExistsError:
+        pass
 
     file_patch = './photos/{:s}.jpg'.format(file_id)
     _file = Path(file_patch)
@@ -585,26 +796,32 @@ def photo_receive(message):
 
         return
 
-    concepts = picturedetect.analise_photo(file_patch)
-    if picturedetect.check_blacklist(concepts, picturedetect.BLACKLIST, logger):
-        random_message(message, ru_strings.SPACE_DETECT_MESSAGE, REPLY_MESSAGE)
+    if not allow_nsfw:
+        if picturedetect.nsfw_test(file_patch, 0.75):
+            bot.delete_message(message.chat.id, message.message_id)
 
-        bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][0]
-                         .format(message.from_user.first_name, 1, 'мин.'), parse_mode='Markdown')
-        ban_user(message.chat.id, message.from_user.id, 60)
+            bot.send_message(message.chat.id, "*{} уходит в бан на {} {}! Причина: NSFW*"
+                            .format(message.from_user.first_name, 2, 'мин.'), parse_mode='Markdown')
+            ban_user(message.chat.id, message.from_user.id, 2*60)
 
-        logger.info("SPACE FOUND! | ID {:s}".format(file_id))
+
+@bot.message_handler(regexp='.*?((б)?[еeе́ė]+л[оoаaа́â]+[pр][уyу́]+[cсċ]+[uи́иеe]+[я́яию]+).*?')
+def byban(message):
+    '''
+    Restriction for all versions of word Беларуссия
+    '''
+
+    bot.send_sticker(message.chat.id, 'CAADAgADGwAD0JwyGF7MX7q4n6d_Ag', reply_to_message_id=message.message_id)
+
+    if message.chat.type == 'private':
+        return
     else:
-        logger.info("SPACE NOT FOUND! | ID {:s}".format(file_id))
+        bot.send_message(message.chat.id, "*{} ушел искать белоруссию на 5 минут!*"
+                        .format(message.from_user.first_name), parse_mode='Markdown')
+        ban_user(message.chat.id, message.from_user.id, 60*5)
 
-    if picturedetect.nsfw_test(file_patch, 0.7):
-        bot.delete_message(message.chat.id, message.message_id)
 
-        bot.send_message(message.chat.id, "*{} уходит в бан на {} {}! Причина: NSFW*"
-                         .format(message.from_user.first_name, 5, 'мин.'), parse_mode='Markdown')
-        ban_user(message.chat.id, message.from_user.id, 5*60)
-
-@bot.message_handler(regexp='(?i)(\W|^).*?!п[eеэ][pр][cс](и|ч[eеи]к).*?(\W|$)')
+@bot.message_handler(regexp='(?i)(\W|^).*?!п[eеэpр][pрeеэ][cс](и|ч[eеи]к).*?(\W|$)')
 def persik_keyword(message):
     if message.forward_from:
         return
@@ -630,7 +847,7 @@ def persik_keyword(message):
             return
 
         for template in MESSAGE_TEMPLATES:
-            if re.match(template[0], message.text):
+            if re.match(template[0], message.text, re.IGNORECASE):
                 template[1](message)
                 return
 
@@ -658,61 +875,38 @@ def edit_handler(message):
         if any((c in penalty_letter_set) for c in message.text):
             bot.delete_message(message.chat.id, message.message_id)
 
+
 def angry_ban(message):
+    '''
+    Ban with angry stickers
+    '''
+
     bot.send_sticker(message.chat.id, 'CAADAgADJwMAApFfCAABfVrdPYRn8x4C')
     if message.chat.type != 'private':
         sleep(4)
-        ban_user('-1001125742098', message.from_user.id, 120)
+        ban_user(config.send_chat_id, message.from_user.id, 120)
         bot.send_message(message.chat.id, ru_strings.BAN_MESSAGE['strings'][0]
                         .format(message.from_user.first_name, 2, 'мин.'), parse_mode='Markdown')
         bot.send_sticker(message.chat.id, 'CAADAgADPQMAApFfCAABt8Meib23A_QC')
 
 
 def false_ban(message):
-    time = 30
-    time_str = re.search('[0-9]{1,5}', message.text)
-    if time_str:
-        time = int(time_str.group(0))
+    '''
+    Ban prank KEK
+    For meanmail exclusive
+    '''
 
-    time_time = re.search('([0-9]{1,5})\s?(с(ек)?|м(ин)?|ч(ас)?|д(ен|н)?)', message.text)
-    if time_time:
-        text = re.search('[А-Яа-я]{2}', time_time.group(0))
-
-    time_time = re.search('([0-9]{1,5})\s?(с(ек)?|м(ин)?|ч(ас)?|д(ен|н)?)', message.text)
-    time_text = 'сек.'
-    if time_time:
-        text = re.search('[А-Яа-я]{1,2}', time_time.group(0))
-        if text:
-            if text.group(0)[0] == "м":
-                time = time * 60
-                time_text= "мин."
-            elif text.group(0)[0] == "ч":
-                time = time * 60 * 60
-                time_text= "ч."
-            elif text.group(0)[0] == "д":  
-                time = time * 24 * 60 * 60
-                time_text= "д."
-
-    bot.send_message('-1001125742098', ru_strings.BAN_MESSAGE['strings'][int(time < 30)]
-                     .format(message.reply_to_message.from_user.first_name, time, time_text), parse_mode='Markdown')
-        
-
-def ban_user_command(message):
-    orig_time = time = 30
-
-    if message.reply_to_message is not None:
-        if all(message.from_user.id != user for user in config.allowed_users) and \
-                        message.from_user.id != message.reply_to_message.from_user.id:
-            return
+    orig_time = time = 40
 
     if message.chat.type != 'private' and message.reply_to_message is None:
         bot.delete_message(message.chat.id, message.message_id)
 
-    time_str = re.search('[0-9]{1,5}', message.text)
+    time_str = re.search('[0-9]{1,8}', message.text)
     if time_str:
-         orig_time = time = int(time_str.group(0))
+        orig_time = time = int(time_str.group(0))
 
-    time_time = re.search('([0-9]{1,5})\s?(с(ек)?|м(ин)?|ч(ас)?|д(ен|н)?)', message.text)
+    time_time = re.search(
+        '([0-9]{1,5})\s?(с(ек)?|м(ин)?|ч(ас)?|д(ен|н)?)', message.text)
     time_text = 'сек.'
     if time_time:
         text = re.search('[А-Яа-я]{1,2}', time_time.group(0))
@@ -723,7 +917,7 @@ def ban_user_command(message):
             elif text.group(0)[0] == "ч":
                 time = time * 60 * 60
                 time_text= "ч."
-            elif text.group(0)[0] == "д":  
+            elif text.group(0)[0] == "д":
                 time = time * 24 * 60 * 60
                 time_text= "д."
 
@@ -740,27 +934,92 @@ def ban_user_command(message):
             ban_message_num = 2
 
     try:
-        ban_user('-1001125742098', user_to_ban.id, time)
-        bot.send_message('-1001125742098', ru_strings.BAN_MESSAGE['strings'][ban_message_num]
+        bot.send_message(config.send_chat_id, ru_strings.BAN_MESSAGE['strings'][ban_message_num]
                                 .format(user_to_ban.first_name, orig_time, time_text), parse_mode='Markdown')
+    except Exception as e:
+        logger.error("[ban_command()] Unexpected error: {}".format(e))
+
+
+def ban_user_command(message):
+    '''
+    Alot of magic
+    '''
+
+    orig_time= 40
+    time = 40
+
+    administrators = bot.get_chat_administrators(message.chat.id)
+    if message.reply_to_message is not None:
+        if all(message.from_user.id != member.user.id for member in administrators) and \
+                        message.from_user.id != message.reply_to_message.from_user.id:
+            return
+
+    if message.chat.type != 'private' and message.reply_to_message is None:
+        bot.delete_message(message.chat.id, message.message_id)
+
+    time_str = re.search('[0-9]{1,8}', message.text)
+    if time_str:
+        orig_time = time = int(time_str.group(0))
+
+    time_time = re.search('([0-9]{1,8})\s?(с(ек)?|м(ин)?|ч(ас)?|д(ен|н)?)', message.text)
+    time_text = 'сек.'
+    if time_time:
+        text = re.search('[А-Яа-я]{1,2}', time_time.group(0))
+        if text:
+            if text.group(0)[0] == "м":
+                time = time * 60
+                time_text = "мин."
+            elif text.group(0)[0] == "ч":
+                time = time * 60 * 60
+                time_text = "ч."
+            elif text.group(0)[0] == "д":
+                time = time * 24 * 60 * 60
+                time_text = "д."
+
+    user_to_ban = None
+    ban_message_num = int(time < 30)
+    if message.chat.type == 'private':
+        if all(message.from_user.id != user for user in config.allowed_users):
+            return
+        user_to_ban = message.reply_to_message.forward_from
+    elif message.reply_to_message is None:
+        user_to_ban = message.from_user
+        ban_message_num = 2
+        if time < 40:
+             time = 40
+             orig_time = 40
+    else:
+        user_to_ban = message.reply_to_message.from_user
+        if message.from_user.id == message.reply_to_message.from_user.id:
+            ban_message_num = 2
+            if time < 40:
+                time = 40
+                orig_time = 40
+
+    try:
+        ban_user(config.send_chat_id, user_to_ban.id, time)
+        bot.send_message(config.send_chat_id, ru_strings.BAN_MESSAGE['strings'][ban_message_num]
+                         .format(user_to_ban.first_name, orig_time, time_text), parse_mode='Markdown')
         logger.info("User {}, Username @{} - banned!"
-                    .format(user_to_ban.id,(user_to_ban.username or "NONE")))
+                    .format(user_to_ban.id, (user_to_ban.username or "NONE")))
     except Exception as e:
         logger.error("[ban_command()] Unexpected error: {}".format(e))
 
 
 def roulette_game(message):
-    if message.chat.type != 'private':
+    if message.chat.type != 'private':  # Only in chat
         r_number = randrange(0, 6)
 
         if r_number == 3:
             bot.send_message(message.chat.id,
-                             ru_strings.ROULETTE_MESSAGE['strings'][0].format(message.from_user.first_name),
+                             ru_strings.ROULETTE_MESSAGE['strings'][0].format(
+                                 message.from_user.first_name),
                              parse_mode='Markdown')
-            ban_user('-1001125742098', message.from_user.id, 1200)
+            ban_user(config.send_chat_id, message.from_user.id, 1200)
         else:
             msg = bot.send_message(message.chat.id,
-                                   ru_strings.ROULETTE_MESSAGE['strings'][1].format(message.from_user.first_name),
+                                   ru_strings.ROULETTE_MESSAGE['strings'][1].format(
+                                       message.from_user.first_name),
                                    parse_mode='Markdown')
             sleep(10)
             bot.delete_message(message.chat.id, message.message_id)
@@ -768,6 +1027,19 @@ def roulette_game(message):
 
 
 def ban_user(chat_id, user_id, time):
+    '''
+    Restricting chat member
+
+    Parameters
+        ----------
+        chat_id : str or int
+            Chat ID
+        user_id : str or int
+            User ID
+        time : int
+            Time in seconds
+    '''
+
     d = datetime.utcnow()
     d = d + timedelta(0, time)
     timestamp = calendar.timegm(d.utctimetuple())
@@ -780,10 +1052,12 @@ def drink_question(message):
                 .format(message.from_user.first_name, (message.from_user.username or "NONE"), message.text))
     random_message(message, ru_strings.DRINK_QUESTION_MESSAGE, REPLY_MESSAGE)
 
+
 def smoke_question(message):
     logger.info("[SMOKE] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE"), message.text))
     bot.reply_to(message, "*Однозначно, дуть!*", parse_mode='Markdown')
+
 
 def come_here_message(message):
     logger.info("[Comehere] command by {:s}, Username @{:s} | '{:s}'"
@@ -816,36 +1090,48 @@ def badboy(message):
 
 
 def life_question(message):
+    '''
+    LOL
+    '''
+
     logger.info("[LIFE] command by {:s}, Username @{:s} | '{:s}'"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE"), message.text))
     bot.reply_to(message, "*42*", parse_mode='Markdown')
 
 
-def evaluate_test(message):
-    print(message.text[17:])
-    print(np.eval(message.text[17:]))
-    bot.reply_to(message, "*Будет {}*".format(np.eval(message.text[17:])), parse_mode='Markdown')
-
-
 def random_joke(message):
+    '''
+    Sending random joke from rzhunemogu.ru in chat
+    '''
+
     resp = requests.get("http://rzhunemogu.ru/RandJSON.aspx?CType=1")
     if resp.status_code == 200:
         utf8content = resp.content.decode("windows-1251").encode('utf-8').decode('utf-8')
         json_joke = json.loads(utf8content.replace('\r\n', '\\r\\n'))
-        
-        message.text = json_joke['content'] + "\nАХ-ХАХАХАХХАХА! лолол!"
-        text_to_speech_caption(message, json_joke['content'])
 
+        message.text = json_joke['content'] + "\nАХ-ХАХАХАХХАХА! лолол!"
+
+        if len(json_joke['content']) > 200:
+            text_to_speech_caption(message, json_joke['content'][:200])
+            bot.send_message(message.chat.id, json_joke['content'][200:])
+        else:
+            text_to_speech_caption(message, json_joke['content'])
 
 
 def fourtytwo(message):
+    '''
+    LOL
+    '''
+
     bot.reply_to(message, "*В чем смысл жизни? 🤔*", parse_mode='Markdown')
 
 
-penalty_users_id = []
-
-
+penalty_users_id = []  # Global variable for user ids with penalty
 def user_penalty_on(message):
+    '''
+    Enables the restriction of users to use certain letters.
+    '''
+
     bot.delete_message(message.chat.id, message.message_id)
     if message.reply_to_message:
         if penalty_users_id.count(message.reply_to_message.from_user.id) == 0:
@@ -855,6 +1141,10 @@ def user_penalty_on(message):
 
 
 def user_penalty_off(message):
+    '''
+    Disables the restriction of users to use certain letters.
+    '''
+
     bot.delete_message(message.chat.id, message.message_id)
     if message.reply_to_message:
             if penalty_users_id.count(message.reply_to_message.from_user.id) == 1:
@@ -863,7 +1153,7 @@ def user_penalty_off(message):
                                  .format(message.reply_to_message.from_user.first_name), parse_mode='Markdown')
 
 
-def text_to_speech_caption(message, cap): #WTF IS THIS?? AM I STUPID?
+def text_to_speech_caption(message, cap):  # WTF IS THIS?? AM I STUPID?
     try:
         bot.delete_message(message.chat.id, message.message_id)
     except Exception as e:
@@ -872,6 +1162,12 @@ def text_to_speech_caption(message, cap): #WTF IS THIS?? AM I STUPID?
     speech = gTTS(text, 'ru')
 
     file_name_len = 10
+
+    try:
+        os.makedirs("./TTS")
+    except FileExistsError:
+        pass
+
     if len(text) < 10:
         file_name_len = len(text)
 
@@ -895,6 +1191,12 @@ def text_to_speech(message):
     speech = gTTS(text, 'ru')
 
     file_name_len = 10
+
+    try:
+        os.makedirs("./TTS")
+    except FileExistsError:
+        pass
+
     if len(text) < 10:
         file_name_len = len(text)
 
@@ -903,32 +1205,12 @@ def text_to_speech(message):
     speech.save(file_name)
 
     with open(file_name, 'rb') as audio:
-        bot.send_voice(message.chat.id,voice=audio)
-
-
-
-
-def donate_generate(message):
-    payment_id = uuid4()
-    payments.waiting_payments.setdefault(str(payment_id), message)
-    payments.generated_payments.setdefault(str(message.from_user.id), str(payment_id))
-
-    print(payment_id)
-
-    url = 'http://alphaofftop.tk/payment1.html?TUID={}'.format(message.from_user.id)
-
-    keyboard = types.InlineKeyboardMarkup()
-    button = types.InlineKeyboardButton("Задонатить 🍩", url=url,callback_data='donate')
-    keyboard.add(button)
-
-    bot.send_message(message.chat.id, "Точно рабочий донат, атвечаю.", reply_markup=keyboard, parse_mode='Markdown')
-
-
+        bot.send_voice(message.chat.id, voice=audio)
 
 
 MESSAGE_TEMPLATES = [
     ['(?i)(\W|^).*?(%в).*?(\W|$)', text_to_speech],
-    ['(?i)(\W|^).*?(дур[ао]к|пид[аоэ]?р|говно|д[еыи]бил|г[оа]ндон|лох|чмо|скотина).*?(\W|$)', angry_ban],
+    ['(?i)(\W|^).*?(дур[ао]к|пид[аоэ]?р|говно|д[еыи]бил|г[оа]ндон|лох|хуй|чмо|скотина|🖕🏻).*?(\W|$)', angry_ban],
     ['(?i)(\W|^).*?(плохой|туп|гад|бяка).*?(\W|$)', badboy],
     ['(?i)(\W|^).*?((за)?бaн(ь)?).*?(\W|$)', false_ban],
     ['(?i)(\W|^).*?((за)?бан(ь)?|заблокируй|накажи|фас).*?(\W|$)', ban_user_command],
@@ -944,13 +1226,31 @@ MESSAGE_TEMPLATES = [
     ['(?i)(\W|^).*?(шутк|анекдот|шутеечка|(по)?шути|жги).*?(\W|$)', random_joke],
     ['(?i)(\W|^).*?42.*?(\W|$)', fourtytwo],
     ['(?i)(\W|^).*?наказание вкл.*?(\W|$)', user_penalty_on],
-    ['(?i)(\W|^).*?наказание выкл.*?(\W|$)', user_penalty_off],
-    ['(?i)(\W|^).*?донат.*?(\W|$)', donate_generate],
-
+    ['(?i)(\W|^).*?наказание выкл.*?(\W|$)', user_penalty_off]
 ]
 
 
+def telegram_polling():
+    '''
+    Reqursive method for handling polling errors
+    '''
+
+    try:
+        bot.polling(none_stop=True, timeout=60)  # constantly get messages from Telegram
+    except Exception:
+        logger.info("Polling error, timeout 10sec")
+        bot.stop_polling()
+        sleep(10)
+        telegram_polling()
+
+
 def main():
+
+    cherrypy.config.update({'log.screen': True,
+                        'log.access_file': '',
+                        'log.error_file': ''})
+
+    telebot.logger.setLevel(logging.INFO)
     logger.setLevel(logging.INFO)
 
     sh = logging.StreamHandler()
@@ -966,28 +1266,21 @@ def main():
     logger.addHandler(sh)
     logger.addHandler(fh)
 
-    thread = threading.Thread(target = payments.run)
-    thread.daemon = True
-    thread.start()
+    '''
+    Automatic posting of birthday greetings in chat
+    '''
+    t1 = threading.Thread(target=birthday_method)
+    t1.daemon = True
+    t1.start()
 
-    bot.remove_webhook()
-    bot.set_webhook(url=config.WEBHOOK_URL_BASE + config.WEBHOOK_URL_PATH,
-                    certificate=open(config.WEBHOOK_SSL_CERT, 'r'))
-
-    cherrypy.config.update({
-        'server.socket_host': config.WEBHOOK_LISTEN,
-        'server.socket_port': config.WEBHOOK_PORT,
-        'server.ssl_module': 'builtin',
-        'server.ssl_certificate': config.WEBHOOK_SSL_CERT,
-        'server.ssl_private_key': config.WEBHOOK_SSL_PRIV
-    })
     bot.set_update_listener(listener)
 
-    
+    # logger.info("Waiting 5 minutes before the start...")
+    # print("Start")
+    # threading.Timer(5*60, onStartProcessing).start()
 
-    logger.info("Alpha-Bot started!")
-    cherrypy.quickstart(WebhookServer(), config.WEBHOOK_URL_PATH, {'/': {}})
-
+    # cherrypy.quickstart(WebhookServer(), config.WEBHOOK_URL_PATH, {'/': {}})
+    telegram_polling()
 
 if __name__ == "__main__":
     main()

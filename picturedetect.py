@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 import re
 from pathlib import Path
 
@@ -15,7 +15,7 @@ ENKEY = 'dbd34c9715484a3abb0bc75a12f1de8f'
 app = ClarifaiApp(api_key=KEY)
 enapp = ClarifaiApp(api_key=ENKEY)
 
-BLACKLIST = {'планета', 'астрономия', 'вселенная',
+BLACKLIST = {'Луна', 'планета', 'астрономия', 'вселенная',
              'орбита', 'космическое пространство',
              'солнечная система', 'космический корабль',
              'галактика', 'астрология',
@@ -25,18 +25,18 @@ BLACKLIST = {'планета', 'астрономия', 'вселенная',
 
 IGNORELIST = {'нет человек'}
 
+
 def analise_photo(file):
     model = app.models.get('general-v1.3')
     res = model.predict_by_filename(file)
     outputs = res.get('outputs')
     for output in outputs:
-        concepts = (concept for concept in output.get('data').get('concepts') if concept['name'] not in IGNORELIST)
+        concepts = (concept for concept in output.get('data').get(
+            'concepts') if concept['name'] not in IGNORELIST)
         return concepts
 
 
 def nsfw_test(file, procents):
-    
-
     model = enapp.models.get('nsfw-v1.0')
     res = model.predict_by_filename(file)
 
@@ -58,7 +58,7 @@ def check_blacklist(concepts, blacklist, logger=None):
     return False
 
 
-# Для замены слов добавить новую запись в этот словарь
+# To replace words, add a new entry to this dictionary.
 REPLACE_MAP = {
     'нет человек': 'безлюдно'
 }
@@ -137,13 +137,13 @@ def clean(name):
 
 def process_words(concepts):
     """
-    1) Сортируем так, чтобы прилагательные были перед существительными
-    2) Делим на словосочетания, чтобы в каждом словосочетании не было
-    больше одного существительного или наречия
-    3) Согласуем каждое словосочетание отдельно
+    1) Sort so that adjectives are before nouns
+    2) Divide into phrases so that each phrase is not
+    more than one noun or adverb
+    3) We agree on each phrase separately
 
-    :param concepts: слова подлежащие обработке
-    :return: слова, сгруппированные в словосочетания
+    : param concepts: words to be processed
+    : return: words grouped into phrases
     """
     names = [clean(concept['name']) for concept in concepts]
 
