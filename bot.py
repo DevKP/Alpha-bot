@@ -30,7 +30,6 @@ from utils import logger
 from utils import bot
 
 from wit import Wit
-
 from gtts import gTTS
 
 
@@ -128,8 +127,10 @@ def on_user_joins(message):
         username_str = '@{}'.format(message.from_user.username)
     else:
         username_str = message.from_user.first_name or 'Ноунейм'
-    message_str = "{} готов(а) сжигать пукан свой в пепел вместе с нами!!🔥\nВстречайте героя!👻".format(username_str)
+    message_str = "{} готов(а) сжигать пукан свой в пепел вместе с нами!!🔥\nВстречайте героя!👻".format(
+        username_str)
     bot.send_message(message.chat.id, message_str)
+
 
 # @bot.message_handler(func=lambda m: True, content_types=['new_chat_members'])
 # def on_user_joins(message):
@@ -363,7 +364,7 @@ def left_chat_message(msg):
 
 
 @bot.message_handler(commands=['everyone'])
-def info_command(message):
+def everyone_command(message):
     administrators = bot.get_chat_administrators(config.send_chat_id)
     if any(message.from_user.id == member.user.id for member in administrators):
         logger.info("/everyone command by {:s}, Username @{:s}"
@@ -507,7 +508,7 @@ def get_user_id_message(message):
 
 
 @bot.message_handler(commands=['getphoto'])
-def get_file_message(message):
+def get_photo_message(message):
     logger.info("/getphoto command by {:s}, Username @{:s}"
                 .format(message.from_user.first_name, (message.from_user.username or "NONE")))
 
@@ -1068,13 +1069,22 @@ def random_joke(message):
         utf8content = resp.content.decode("windows-1251").encode('utf-8').decode('utf-8')
         json_joke = json.loads(utf8content.replace('\r\n', '\\r\\n'))
 
-        message.text = json_joke['content'] + "\nАХ-ХАХАХАХХАХА! лолол!"
+        message.text = "{}\nАХ-ХАХАХАХХАХА! лолол!".format(json_joke)
 
         if len(json_joke['content']) > 200:
-            text_to_speech_caption(message, json_joke['content'][:200])
-            bot.send_message(message.chat.id, json_joke['content'][200:])
+            file = text_to_speech(json_joke['content'])
+            with open(file, 'rb') as audio:
+                voice_msg = bot.send_voice(message.chat.id, reply_to_message_id=message.message_id,
+                                           voice=audio, caption=json_joke['content'][:200])
+
+            bot.send_message(
+                message.chat.id, reply_to_message_id=voice_msg.message_id,
+                                    text=json_joke['content'][200:])
         else:
-            text_to_speech_caption(message, json_joke['content'])
+            file = text_to_speech(json_joke['content'])
+            with open(file, 'rb') as audio:
+                bot.send_voice(message.chat.id, voice=audio, caption=json_joke['content'],
+                               reply_to_message_id=message.message_id)
 
 
 def fourtytwo(message):
@@ -1112,63 +1122,62 @@ def user_penalty_off(message):
                                  .format(message.reply_to_message.from_user.first_name), parse_mode='Markdown')
 
 
-def text_to_speech_caption(message, cap):  # WTF IS THIS?? AM I STUPID?
-    try:
-        bot.delete_message(message.chat.id, message.message_id)
-    except Exception as e:
-        logger.error("(TTS) Unexpected error: {}".format(e))
-    text = message.text
-    speech = gTTS(text, 'ru')
+def text_to_speech(text):
+    '''
+    Translates text to speech, saves mp3 to file
+    Returns : file_name : str
 
-    file_name_len = 10
+    Parameters
+    ----------
+    text : str
+        Text
+    '''
 
     try:
         os.makedirs("./TTS")
     except FileExistsError:
         pass
 
-    if len(text) < 10:
-        file_name_len = len(text)
+    try:
+        speech = gTTS(text, 'ru')
+        test = gTTS("ТЕСТТЕСТ", 'ru')
+        test.save("TEST.mp3")
 
-    file_name = './TTS/{}.mp3'.format(text[:file_name_len])
+        file_name_len = 10
 
-    speech.save(file_name)
+        if len(text) < 10:
+            file_name_len = len(text)
 
-    with open(file_name, 'rb') as audio:
-        bot.send_voice(message.chat.id, caption=cap,voice=audio)
+        file_name = './TTS/{}.mp3'.format(text[:file_name_len])
+
+        speech.save(file_name)
+
+    except Exception as e:
+        logger.error("(TTS) Unexpected error: {}".format(e))
+        raise e
+
+    return file_name
 
 
-def text_to_speech(message):
+def text_to_speech_voice(message):
     try:
         bot.delete_message(message.chat.id, message.message_id)
     except Exception as e:
         logger.error("(TTS) Unexpected error: {}".format(e))
+
     if message.reply_to_message:
         text = message.reply_to_message.text
     else:
         text = message.text[11:]
-    speech = gTTS(text, 'ru')
 
-    file_name_len = 10
+    file = text_to_speech(text)
 
-    try:
-        os.makedirs("./TTS")
-    except FileExistsError:
-        pass
-
-    if len(text) < 10:
-        file_name_len = len(text)
-
-    file_name = './TTS/{}.mp3'.format(text[:file_name_len])
-
-    speech.save(file_name)
-
-    with open(file_name, 'rb') as audio:
+    with open(file, 'rb') as audio:
         bot.send_voice(message.chat.id, voice=audio)
 
 
 MESSAGE_TEMPLATES = [
-    ['(?i)(\W|^).*?(%в).*?(\W|$)', text_to_speech],
+    ['(?i)(\W|^).*?(%в).*?(\W|$)', text_to_speech_voice],
     ['(?i)(\W|^).*?(дур[ао]к|пид[аоэ]?р|говно|д[еыи]бил|г[оа]ндон|лох|хуй|чмо|скотина|🖕🏻).*?(\W|$)', angry_ban],
     ['(?i)(\W|^).*?(плохой|туп|гад|бяка).*?(\W|$)', badboy],
     ['(?i)(\W|^).*?((за)?бaн(ь)?).*?(\W|$)', false_ban],
@@ -1240,6 +1249,7 @@ def main():
 
     # cherrypy.quickstart(WebhookServer(), config.WEBHOOK_URL_PATH, {'/': {}})
     telegram_polling()
+
 
 if __name__ == "__main__":
     main()
