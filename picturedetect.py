@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
+import os
 from pathlib import Path
 
 import pymorphy2
@@ -65,6 +66,11 @@ REPLACE_MAP = {
 
 
 def reply_get_concept_msg(photo_id):
+    try:
+        os.makedirs("./photos")
+    except FileExistsError:
+        pass
+
     file_patch = './photos/{:s}.jpg'.format(photo_id)
     _file = Path(file_patch)
     if not _file.is_file():
