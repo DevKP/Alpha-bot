@@ -121,36 +121,49 @@ def rate_command(message):
 @bot.message_handler(func=lambda m: True, content_types=['new_chat_members'])
 def on_user_joins(message):
     logger.info("New chat member, username: @{:s}".format(
-                                        message.from_user.username or "NONE"))
-
-    keyboard = types.InlineKeyboardMarkup()
-
-    choice1 = types.InlineKeyboardButton(
-        "Суицид!", callback_data='choice1$' + str(message.from_user.id))
-
-    choice2 = types.InlineKeyboardButton(
-        "Вперед!", callback_data='choice2$' + str(message.from_user.id))
-
-    keyboard.row(choice1, choice2)
+                                             message.from_user.username or "NONE"))
 
     # Use firstname if username is NONE
     if message.from_user.username is not None:
         username_str = '@{}'.format(message.from_user.username)
     else:
         username_str = message.from_user.first_name or 'Ноунейм'
+    message_str = "{} готов(а) сжигать пукан свой в пепел вместе с нами!!🔥\nВстречайте героя!👻".format(username_str)
+    bot.send_message(message.chat.id, message_str)
 
-    message_str = '{}! Готов(а) ли ты сжигать пукан свой в пепел вместе с нами?🔥'.format(
-        username_str)
-
-    # Temporary restrict user
-    bot.send_message(message.chat.id, message_str, reply_markup=keyboard)
-
-    # Catch "can't demote chat creator" Exception
-    try:
-        bot.restrict_chat_member(
-            message.chat.id, message.from_user.id, 1, False, False, False, False)
-    except Exception:
-        logger.info("[EXCEPTION] Bad Request: can't demote chat creator!")
+# @bot.message_handler(func=lambda m: True, content_types=['new_chat_members'])
+# def on_user_joins(message):
+#     logger.info("New chat member, username: @{:s}".format(
+#                                        message.from_user.username or "NONE"))
+#
+#    keyboard = types.InlineKeyboardMarkup()
+#
+#     choice1 = types.InlineKeyboardButton(
+#        "Суицид!", callback_data='choice1$' + str(message.from_user.id))
+#
+#     choice2 = types.InlineKeyboardButton(
+#        "Вперед!", callback_data='choice2$' + str(message.from_user.id))
+#
+#    keyboard.row(choice1, choice2)
+#
+#     # Use firstname if username is NONE
+#     if message.from_user.username is not None:
+#         username_str = '@{}'.format(message.from_user.username)
+#     else:
+#        username_str = message.from_user.first_name or 'Ноунейм'
+#
+#     message_str = '{}! Готов(а) ли ты сжигать пукан свой в пепел вместе с нами?🔥'.format(
+#        username_str)
+#
+#     # Temporary restrict user
+#    bot.send_message(message.chat.id, message_str, reply_markup=keyboard)
+#
+#     # Catch "can't demote chat creator" Exception
+#     try:
+#         bot.restrict_chat_member(
+#             message.chat.id, message.from_user.id, 1, False, False, False, False)
+#     except Exception:
+#         logger.info("[EXCEPTION] Bad Request: can't demote chat creator!")
 
 
 @bot.callback_query_handler(func=lambda call: 'choice' in call.data)
