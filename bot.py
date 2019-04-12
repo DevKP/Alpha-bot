@@ -121,6 +121,17 @@ def rate_command(message):
 def on_user_joins(message):
     logger.info("New chat member, username: @{:s}".format(
                                              message.from_user.username or "NONE"))
+    print(message)
+    if re.search(r"\b[bб6][оo][т7t]\b", message.from_user.first_name, re.IGNORECASE | re.UNICODE) or \
+        re.search(r"\b[bб6][оo][т7t]\b", message.from_user.last_name, re.IGNORECASE | re.UNICODE):
+        if message.from_user.username is not None:
+            username_str = '@{}'.format(message.from_user.username)
+        else:
+            username_str = message.from_user.first_name or 'Ноунейм'
+        message_str = "Возможно [{}] - это бот!\n@via_tcp\n@content_of_brain\n@lopotyana".format(username_str)
+        bot.send_message(message.chat.id, message_str)
+        bot.restrict_chat_member(message.chat.id, message.from_user.id, 0, False, False, False, False)
+        return
 
     # Use firstname if username is NONE
     if message.from_user.username is not None:
@@ -354,15 +365,6 @@ def document_message(msg):
     utils.file_download(file_info, './documents/')
 
 
-@bot.message_handler(content_types=['left_chat_member'])
-def left_chat_message(msg):
-    logger.info("Left chat member, username: @{:s}".format(
-        msg.from_user.username))
-
-    bot.send_message(msg.chat.id, ru_strings.GOODBYE_MESSAGE['strings'][0], parse_mode='Markdown')
-    bot.send_sticker(msg.chat.id, ru_strings.GOODBYE_MESSAGE['stickers'][0])
-
-
 @bot.message_handler(commands=['everyone'])
 def everyone_command(message):
     administrators = bot.get_chat_administrators(config.send_chat_id)
@@ -412,6 +414,11 @@ def info_command(message):
                 .format(message.from_user.first_name, (message.from_user.username or "NONE")))
     bot.send_message(message.chat.id, ru_strings.INFO_COMMAND_MESSAGE, parse_mode='Markdown')
 
+@bot.message_handler(commands=['mc'])
+def msg_count_command(message):
+    logger.info("/msg_count command by {:s}, Username @{:s}"
+                .format(message.from_user.first_name, (message.from_user.username or "NONE")))
+    bot.send_message(message.chat.id, "*{} сообщений в чате*".format(message.message_id), parse_mode='Markdown')
 
 @bot.message_handler(commands = ['msg'])
 def send_msg_command(message):
@@ -1134,14 +1141,14 @@ def text_to_speech(text):
     '''
 
     try:
-        os.makedirs("./TTS")
-    except FileExistsError:
-        pass
-
-    try:
         speech = gTTS(text, 'ru')
         test = gTTS("ТЕСТТЕСТ", 'ru')
         test.save("TEST.mp3")
+
+        try:
+            os.makedirs("./TTS")
+        except FileExistsError:
+            pass
 
         file_name_len = 10
 
@@ -1154,7 +1161,6 @@ def text_to_speech(text):
 
     except Exception as e:
         logger.error("(TTS) Unexpected error: {}".format(e))
-        raise e
 
     return file_name
 
@@ -1207,9 +1213,9 @@ def telegram_polling():
         bot.polling(none_stop=True, timeout=60)  # constantly get messages from Telegram
     except Exception:
         logger.info("Polling error, timeout 10sec")
-        bot.stop_polling()
-        sleep(10)
-        telegram_polling()
+    bot.stop_polling()
+    sleep(10)
+    telegram_polling()
 
 
 def main():
@@ -1249,7 +1255,6 @@ def main():
 
     # cherrypy.quickstart(WebhookServer(), config.WEBHOOK_URL_PATH, {'/': {}})
     telegram_polling()
-
 
 if __name__ == "__main__":
     main()
